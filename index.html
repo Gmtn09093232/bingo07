@@ -19,24 +19,10 @@
     theme: {
       extend: {
         colors: {
-          hearth: {
-            DEFAULT: '#F5B041',
-            50:  '#FEF8EC',
-            100: '#FDEFD6',
-            200: '#FBDDA6',
-            300: '#F8C97A',
-            400: '#F5B041',
-            500: '#E89B2A',
-            600: '#C97F1B',
-          },
-          cream:    '#FAFAFA',
-          charcoal: '#1A1A1A',
-          muted:    '#6B6B6B',
-          line:     '#ECECEC',
+          hearth: { DEFAULT:'#F5B041', 50:'#FEF8EC', 100:'#FDEFD6', 200:'#FBDDA6', 300:'#F8C97A', 400:'#F5B041', 500:'#E89B2A', 600:'#C97F1B' },
+          cream: '#FAFAFA', charcoal: '#1A1A1A', muted: '#6B6B6B', line: '#ECECEC',
         },
-        fontFamily: {
-          sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'sans-serif'],
-        },
+        fontFamily: { sans: ['Inter','-apple-system','BlinkMacSystemFont','SF Pro Display','Segoe UI','sans-serif'] },
         borderRadius: { card: '16px' },
         boxShadow: {
           soft: '0 4px 20px -6px rgba(26,26,26,0.10)',
@@ -52,66 +38,55 @@
 
 <style>
   html, body { height: 100%; }
-  body {
-    background: #EFEFEF;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    overscroll-behavior-y: none;
-  }
+  body { background:#EFEFEF; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; overscroll-behavior-y:none; }
   * { -webkit-tap-highlight-color: transparent; }
 
-  #app {
-    position: relative;
-    width: 100%;
-    max-width: 480px;
-    margin: 0 auto;
-    min-height: 100dvh;
-    background: #FAFAFA;
-    overflow: hidden;
-    box-shadow: 0 0 60px -20px rgba(0,0,0,0.25);
-  }
+  #app { position:relative; width:100%; max-width:480px; margin:0 auto; min-height:100dvh; background:#FAFAFA; overflow:hidden; box-shadow:0 0 60px -20px rgba(0,0,0,0.25); }
 
-  .screen { display: none; animation: screenIn 0.28s ease both; }
-  .screen.active { display: block; }
-  @keyframes screenIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+  .screen { display:none; animation: screenIn 0.28s ease both; }
+  .screen.active { display:block; }
+  @keyframes screenIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform: translateY(0);} }
 
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display:none; }
+  .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
 
-  .profile-card { touch-action: pan-y; user-select: none; will-change: transform; }
+  .profile-card { touch-action: pan-y; user-select:none; will-change: transform; }
 
-  .bubble-out {
-    background: #F5B041;
-    color: #1A1A1A;
-    border-radius: 18px 18px 4px 18px;
-  }
-  .bubble-in {
-    background: #FFFFFF;
-    color: #1A1A1A;
-    border-radius: 18px 18px 18px 4px;
-    box-shadow: 0 2px 10px -6px rgba(26,26,26,0.25);
-  }
-
-  .typing span {
-    display: inline-block; width: 6px; height: 6px; border-radius: 999px;
-    background: #B9B9B9; margin-right: 3px;
-    animation: blink 1.2s infinite both;
-  }
-  .typing span:nth-child(2) { animation-delay: .18s; }
-  .typing span:nth-child(3) { animation-delay: .36s; }
-  @keyframes blink { 0%,80%,100% { opacity:.25; transform: translateY(0);} 40% { opacity:1; transform: translateY(-2px);} }
+  .bubble-out { background:#F5B041; color:#1A1A1A; border-radius: 18px 18px 4px 18px; }
+  .bubble-in  { background:#FFFFFF; color:#1A1A1A; border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 10px -6px rgba(26,26,26,0.25); }
 
   .overlay { animation: fadeIn .22s ease both; }
-  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
   .pop { animation: pop .32s cubic-bezier(.2,.9,.3,1.3) both; }
   @keyframes pop { from { opacity:0; transform: scale(.88) } to { opacity:1; transform: scale(1) } }
+
+  .sheet-in { animation: sheetUp .28s cubic-bezier(.2,.9,.3,1.05) both; }
+  @keyframes sheetUp { from { transform: translateY(100%);} to { transform: translateY(0);} }
+
+  .sheet-out { animation: sheetDown .22s cubic-bezier(.4,0,.6,1) both; }
+  @keyframes sheetDown { from { transform: translateY(0);} to { transform: translateY(100%);} }
 
   #toast { transition: transform .3s cubic-bezier(.2,.9,.3,1.2), opacity .3s ease; }
 
   .locked-avatar { filter: blur(7px) saturate(1.15); transform: scale(1.08); }
+
+  /* call pulse */
+  .call-pulse { animation: callPulse 1.8s ease-out infinite; }
+  @keyframes callPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(245,176,65,0.55); }
+    100% { box-shadow: 0 0 0 26px rgba(245,176,65,0); }
+  }
+
+  /* call control button */
+  .call-ctl {
+    width: 58px; height: 58px; border-radius: 999px;
+    display:flex; align-items:center; justify-content:center;
+    background: rgba(255,255,255,0.14);
+    backdrop-filter: blur(14px);
+    color:#fff; transition: transform .15s ease, background .15s ease;
+  }
+  .call-ctl:active { transform: scale(0.94); }
+  .call-ctl.off { background:#fff; color:#1A1A1A; }
 </style>
 </head>
 
@@ -125,7 +100,6 @@
   <section id="screen-auth" class="screen active">
     <div class="min-h-dvh flex items-center justify-center px-5 py-10">
       <div class="w-full max-w-[400px]">
-
         <div class="text-center mb-7">
           <h1 class="text-[30px] font-extrabold tracking-[-0.02em]">Hearthside</h1>
           <p class="text-[13.5px] text-muted mt-2">Meaningful people. Brighter days.</p>
@@ -133,14 +107,8 @@
 
         <div class="bg-white rounded-card shadow-soft border border-line p-6">
           <div class="flex bg-cream rounded-full p-1 mb-5">
-            <button id="tabSignIn"
-              class="flex-1 py-2.5 rounded-full text-[13.5px] font-bold transition bg-white shadow-soft">
-              Sign in
-            </button>
-            <button id="tabSignUp"
-              class="flex-1 py-2.5 rounded-full text-[13.5px] font-bold transition text-muted">
-              Create account
-            </button>
+            <button id="tabSignIn" class="flex-1 py-2.5 rounded-full text-[13.5px] font-bold transition bg-white shadow-soft">Sign in</button>
+            <button id="tabSignUp" class="flex-1 py-2.5 rounded-full text-[13.5px] font-bold transition text-muted">Create account</button>
           </div>
 
           <form id="authForm" class="space-y-3.5">
@@ -215,9 +183,7 @@
       </div>
       <button id="filterBtn"
         class="mt-0.5 w-11 h-11 rounded-full bg-white shadow-soft border border-line/70 flex items-center justify-center active:scale-95 transition">
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-          <path d="M4 6h16M7 12h10M10 18h4"/>
-        </svg>
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
       </button>
     </header>
 
@@ -225,39 +191,27 @@
       class="mx-5 mb-4 w-[calc(100%-40px)] flex items-center gap-3 bg-white rounded-card p-3.5 shadow-soft border border-line/70 text-left active:scale-[.985] transition">
       <div class="w-11 h-11 shrink-0 rounded-full bg-hearth-50 flex items-center justify-center">
         <svg class="w-[18px] h-[18px] text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/>
-          <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+          <rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
         </svg>
       </div>
       <div class="flex-1 min-w-0">
-        <p class="text-[14px] font-semibold leading-tight">
-          <span id="likesBannerCount">0</span> people have liked you
-        </p>
+        <p class="text-[14px] font-semibold leading-tight"><span id="likesBannerCount">0</span> people have liked you</p>
         <p id="likesBannerSub" class="text-[12px] text-muted mt-0.5">Unlock to see who they are</p>
       </div>
-      <svg class="w-4 h-4 text-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 6l6 6-6 6"/>
-      </svg>
+      <svg class="w-4 h-4 text-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
     </button>
 
-    <div class="px-5">
-      <div id="cardStack" class="relative h-[56vh] min-h-[380px] max-h-[560px]"></div>
-    </div>
+    <div class="px-5"><div id="cardStack" class="relative h-[56vh] min-h-[380px] max-h-[560px]"></div></div>
 
     <div class="px-5 mt-6 flex items-center justify-between gap-2">
       <div class="flex items-center gap-2.5">
-        <button id="undoBtn"
-          class="w-11 h-11 rounded-full bg-white/80 border border-line flex items-center justify-center text-muted active:scale-95 transition">
+        <button id="undoBtn" class="w-11 h-11 rounded-full bg-white/80 border border-line flex items-center justify-center text-muted active:scale-95 transition">
           <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 8h11a6 6 0 0 1 0 12H8"/><path d="M7 4L3 8l4 4"/>
           </svg>
         </button>
-
-        <button id="passBtn"
-          class="w-[58px] h-[58px] rounded-full bg-white shadow-soft border border-line/70 flex items-center justify-center text-charcoal active:scale-95 transition">
-          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
-            <path d="M6 6l12 12M18 6L6 18"/>
-          </svg>
+        <button id="passBtn" class="w-[58px] h-[58px] rounded-full bg-white shadow-soft border border-line/70 flex items-center justify-center text-charcoal active:scale-95 transition">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
 
@@ -266,8 +220,7 @@
         <div id="likeDots" class="flex items-center justify-center gap-1.5 mt-2"></div>
       </div>
 
-      <button id="likeBtn"
-        class="w-[64px] h-[64px] rounded-full bg-hearth shadow-amber flex items-center justify-center text-charcoal active:scale-95 transition">
+      <button id="likeBtn" class="w-[64px] h-[64px] rounded-full bg-hearth shadow-amber flex items-center justify-center text-charcoal active:scale-95 transition">
         <svg class="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 21s-7.5-4.7-9.4-9.2C1.1 8.2 3 5 6.3 5c2 0 3.4 1.1 4.2 2.3l1.5 2 1.5-2C14.3 6.1 15.7 5 17.7 5 21 5 22.9 8.2 21.4 11.8 19.5 16.3 12 21 12 21z"/>
         </svg>
@@ -293,22 +246,15 @@
       <div class="bg-white rounded-card shadow-soft border border-line/70 p-5 text-center">
         <div class="w-14 h-14 mx-auto rounded-full bg-hearth-50 flex items-center justify-center mb-3">
           <svg class="w-6 h-6 text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/>
-            <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+            <rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
           </svg>
         </div>
-        <h2 class="text-[17px] font-bold">
-          <span id="likesLockedCount">0</span> people like you
-        </h2>
-        <p class="text-[13px] text-muted mt-1.5 leading-relaxed">
-          See everyone who liked you, plus unlimited likes and advanced filters.
-        </p>
-        <button id="likesUnlockBtn"
-          class="mt-5 w-full h-12 rounded-full bg-hearth shadow-amber font-bold text-[15px] active:scale-[.98] transition">
+        <h2 class="text-[17px] font-bold"><span id="likesLockedCount">0</span> people like you</h2>
+        <p class="text-[13px] text-muted mt-1.5 leading-relaxed">See everyone who liked you, plus unlimited likes and advanced filters.</p>
+        <button id="likesUnlockBtn" class="mt-5 w-full h-12 rounded-full bg-hearth shadow-amber font-bold text-[15px] active:scale-[.98] transition">
           Unlock with Member+
         </button>
       </div>
-
       <div id="likesBlurGrid" class="grid grid-cols-3 gap-3 mt-5"></div>
     </div>
 
@@ -358,9 +304,7 @@
       <header class="shrink-0 bg-cream/95 backdrop-blur border-b border-line/80">
         <div class="px-4 pt-5 pb-3 flex items-center gap-3">
           <button id="chatBack" class="w-9 h-9 -ml-1 rounded-full flex items-center justify-center active:scale-95 transition">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 6l-6 6 6 6"/>
-            </svg>
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
           </button>
 
           <div class="relative shrink-0">
@@ -373,17 +317,22 @@
             <p id="chatStatus" class="text-[12px] text-emerald-600 font-medium">Online now</p>
           </div>
 
-          <button class="w-9 h-9 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition js-coming-soon" data-label="Video calls">
+          <!-- Video call -->
+          <button id="videoCallBtn" class="w-9 h-9 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition">
             <svg class="w-[19px] h-[19px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2.5" y="6.5" width="13" height="11" rx="3"/><path d="M15.5 10.5l5-3v9l-5-3z"/>
             </svg>
           </button>
-          <button class="w-9 h-9 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition js-coming-soon" data-label="Voice calls">
+
+          <!-- Voice call -->
+          <button id="voiceCallBtn" class="w-9 h-9 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition">
             <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 3.5h3l1.8 4.2-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4.2 1.8v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 3 5.7 2 2 0 0 1 5 3.5z"/>
             </svg>
           </button>
-          <button class="w-9 h-9 -mr-1 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition js-coming-soon" data-label="Chat options">
+
+          <!-- Chat options -->
+          <button id="chatOptionsBtn" class="w-9 h-9 -mr-1 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition">
             <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/>
             </svg>
@@ -412,8 +361,7 @@
           <textarea id="chatInput" rows="1" placeholder="Message…"
             class="flex-1 resize-none max-h-28 rounded-[22px] bg-white border border-line px-4 py-3 text-[14.5px] leading-snug outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition"></textarea>
 
-          <button id="sendBtn"
-            class="w-11 h-11 shrink-0 rounded-full bg-hearth shadow-amber flex items-center justify-center active:scale-95 transition">
+          <button id="sendBtn" class="w-11 h-11 shrink-0 rounded-full bg-hearth shadow-amber flex items-center justify-center active:scale-95 transition">
             <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
               <path d="M3.3 3.2l17.4 8.1a.8.8 0 0 1 0 1.4L3.3 20.8a.8.8 0 0 1-1.1-.9l1.5-6.2 9.1-.7-9.1-.7-1.5-6.2a.8.8 0 0 1 1.1-.9z"/>
             </svg>
@@ -431,12 +379,9 @@
   <section id="screen-paywall" class="screen">
     <div class="fixed inset-0 z-50 mx-auto max-w-app bg-cream overflow-y-auto no-scrollbar">
       <div class="px-5 pt-5 pb-10" style="padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));">
-
         <div class="flex items-center justify-between mb-6">
           <button id="paywallBack" class="w-10 h-10 -ml-2 rounded-full flex items-center justify-center active:scale-95 transition">
-            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M15 6l-6 6 6 6"/>
-            </svg>
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
           </button>
           <span class="text-[15px] font-bold tracking-tight">Member+</span>
           <div class="w-10"></div>
@@ -447,17 +392,12 @@
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
             Member+
           </div>
-          <h2 class="text-[24px] leading-[1.2] font-extrabold tracking-[-0.02em] px-2">
-            More reach, never a paywall on talking
-          </h2>
-          <p class="text-[13.5px] text-muted mt-3 px-4 leading-relaxed">
-            Messaging with matches is always free. Member+ just gets you seen by more of the right people.
-          </p>
+          <h2 class="text-[24px] leading-[1.2] font-extrabold tracking-[-0.02em] px-2">More reach, never a paywall on talking</h2>
+          <p class="text-[13.5px] text-muted mt-3 px-4 leading-relaxed">Messaging with matches is always free. Member+ just gets you seen by more of the right people.</p>
         </div>
 
         <div class="space-y-3.5" id="planList">
-          <button data-plan="monthly"
-            class="plan-card w-full text-left bg-white rounded-card border-2 border-line p-5 shadow-soft transition active:scale-[.99]">
+          <button data-plan="monthly" class="plan-card w-full text-left bg-white rounded-card border-2 border-line p-5 shadow-soft transition active:scale-[.99]">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
@@ -473,8 +413,7 @@
             </div>
           </button>
 
-          <button data-plan="yearly"
-            class="plan-card w-full text-left bg-white rounded-card border-2 border-line p-5 shadow-soft transition active:scale-[.99]">
+          <button data-plan="yearly" class="plan-card w-full text-left bg-white rounded-card border-2 border-line p-5 shadow-soft transition active:scale-[.99]">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <div class="flex items-center gap-2">
@@ -496,8 +435,7 @@
           <ul class="space-y-3" id="featureList"></ul>
         </div>
 
-        <button id="payBtn"
-          class="mt-6 w-full h-14 rounded-full bg-hearth shadow-amber flex items-center justify-center gap-2.5 active:scale-[.98] transition">
+        <button id="payBtn" class="mt-6 w-full h-14 rounded-full bg-hearth shadow-amber flex items-center justify-center gap-2.5 active:scale-[.98] transition">
           <span class="inline-flex items-center gap-1.5 bg-white rounded-full px-2.5 py-1">
             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
             <span class="text-[11.5px] font-extrabold tracking-tight text-emerald-600 lowercase">telebirr</span>
@@ -548,19 +486,13 @@
       </span>
     </div>
 
-    <h3 class="text-[20px] font-extrabold tracking-tight">
-      You and <span id="matchModalName">them</span> liked each other
-    </h3>
-    <p class="text-[13px] text-muted mt-2 leading-relaxed">
-      Messaging is always free. Start with something you both care about.
-    </p>
+    <h3 class="text-[20px] font-extrabold tracking-tight">You and <span id="matchModalName">them</span> liked each other</h3>
+    <p class="text-[13px] text-muted mt-2 leading-relaxed">Messaging is always free. Start with something you both care about.</p>
 
-    <button id="matchSayHi"
-      class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
+    <button id="matchSayHi" class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
       Send a message
     </button>
-    <button id="matchKeepSwiping"
-      class="mt-2.5 w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
+    <button id="matchKeepSwiping" class="mt-2.5 w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
       Keep swiping
     </button>
   </div>
@@ -581,9 +513,217 @@
     <p class="text-[13px] text-muted mt-2.5 leading-relaxed">
       Welcome to Member+. Unlimited likes, advanced filters, and you can finally see everyone who liked you.
     </p>
-    <button id="premiumDone"
-      class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
+    <button id="premiumDone" class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
       Start exploring
+    </button>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     CALL OVERLAY (Video & Voice)
+     ============================================================ -->
+<div id="callOverlay" class="hidden fixed inset-0 z-[80] bg-charcoal text-white">
+  <div class="relative w-full h-full max-w-app mx-auto overflow-hidden">
+
+    <!-- Partner "video" layer (avatar enlarged) -->
+    <div id="callVideoLayer" class="absolute inset-0">
+      <img id="callPartnerVideo" class="w-full h-full object-cover opacity-80" alt="" />
+      <div class="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/85"></div>
+    </div>
+
+    <!-- Self preview (video only) -->
+    <div id="callSelfPreview"
+      class="hidden absolute top-[68px] right-4 w-[112px] h-[160px] rounded-2xl overflow-hidden border-2 border-white/30 shadow-card bg-hearth-100">
+      <img id="callSelfVideo" class="w-full h-full object-cover" alt="" />
+      <span class="absolute bottom-1.5 left-2 text-[10px] font-bold text-white/85 drop-shadow">You</span>
+    </div>
+
+    <!-- Ringing avatar (voice only) -->
+    <div id="callAvatarWrap" class="hidden absolute inset-0 flex items-center justify-center">
+      <div class="relative">
+        <div class="w-[152px] h-[152px] rounded-full overflow-hidden border-4 border-white/20 call-pulse">
+          <img id="callPartnerAvatar" class="w-full h-full object-cover" alt="" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Top info -->
+    <div class="absolute top-0 left-0 right-0 px-6 pt-7 text-center pointer-events-none">
+      <p id="callKindLabel" class="text-[11.5px] font-bold uppercase tracking-[0.16em] text-white/70">Voice call</p>
+      <h2 id="callPartnerName" class="text-[24px] font-extrabold mt-2 tracking-tight">Match</h2>
+      <p id="callStatusText" class="text-[13.5px] text-white/80 mt-2">Calling…</p>
+      <p id="callTimer" class="hidden text-[13.5px] font-mono text-white/90 mt-1">00:00</p>
+    </div>
+
+    <!-- Bottom controls -->
+    <div class="absolute bottom-0 left-0 right-0 px-6 pb-12 pt-6">
+      <div class="flex items-center justify-center gap-4 mb-8">
+        <!-- Mute -->
+        <button id="callMuteBtn" class="call-ctl" aria-label="Mute">
+          <svg class="w-6 h-6 icon-mic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="3" width="6" height="11" rx="3"/>
+            <path d="M5.5 11a6.5 6.5 0 0 0 13 0"/>
+            <path d="M12 17.5V21"/>
+          </svg>
+          <svg class="w-6 h-6 icon-mic-off hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3l18 18"/>
+            <path d="M9 5a3 3 0 0 1 6 0v6"/>
+            <path d="M15 15a3 3 0 0 1-6 0V9"/>
+            <path d="M5.5 11a6.5 6.5 0 0 0 10.3 5.2"/>
+            <path d="M19 12a6.5 6.5 0 0 1-.7 3"/>
+            <path d="M12 17.5V21"/>
+          </svg>
+        </button>
+
+        <!-- Speaker -->
+        <button id="callSpeakerBtn" class="call-ctl" aria-label="Speaker">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 9.5h3l4-3.5v12l-4-3.5H4z"/>
+            <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+            <path d="M18 6a8.5 8.5 0 0 1 0 12"/>
+          </svg>
+        </button>
+
+        <!-- Camera toggle (video only) -->
+        <button id="callVideoToggleBtn" class="call-ctl" aria-label="Toggle camera">
+          <svg class="w-6 h-6 icon-cam-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2.5" y="6.5" width="13" height="11" rx="3"/><path d="M15.5 10.5l5-3v9l-5-3z"/>
+          </svg>
+          <svg class="w-6 h-6 icon-cam-off hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3l18 18"/>
+            <path d="M13 8.5l2.5-1.5v9l-4-2.4"/>
+            <path d="M2.5 6.5h10.5v11H2.5z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- End call -->
+      <div class="flex justify-center">
+        <button id="callEndBtn"
+          class="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-amber active:scale-95 transition">
+          <svg class="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6.6 15.4l-1.4 1.4a2 2 0 0 1-2.9-.1 16 16 0 0 1 0-13.4 2 2 0 0 1 2.9-.1l1.4 1.4a2 2 0 0 1 0 2.9L5 9.3a14 14 0 0 0 9.7 9.7l1.8-1.6a2 2 0 0 1 2.9 0l1.4 1.4a2 2 0 0 1-.1 2.9 16 16 0 0 1-13.4 0 2 2 0 0 1-.1-2.9l-.6-3.4z" transform="rotate(135 12 12)"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     CHAT OPTIONS BOTTOM SHEET
+     ============================================================ -->
+<div id="chatOptionsSheet" class="hidden fixed inset-0 z-[70] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
+  <div id="chatOptionsPanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
+    <div class="w-10 h-1 rounded-full bg-line mx-auto mt-3 mb-2"></div>
+
+    <div class="px-5 py-4">
+      <button data-opt="profile" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
+        <span class="w-10 h-10 rounded-full bg-hearth-50 flex items-center justify-center">
+          <svg class="w-4.5 h-4.5 text-hearth-600" style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.6-3.6 3.7-5.8 7.5-5.8s6.9 2.2 7.5 5.8"/>
+          </svg>
+        </span>
+        <span class="text-[14.5px] font-semibold text-left flex-1">View profile</span>
+        <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+
+      <button data-opt="mute" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
+        <span class="w-10 h-10 rounded-full bg-hearth-50 flex items-center justify-center">
+          <svg class="w-4.5 h-4.5 text-hearth-600" style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0v4.5l1.5 3h-15L6 12.5z"/>
+            <path d="M10 19a2 2 0 0 0 4 0"/>
+          </svg>
+        </span>
+        <span id="muteOptLabel" class="text-[14.5px] font-semibold text-left flex-1">Mute notifications</span>
+        <span id="muteOptBadge" class="hidden text-[11px] font-bold text-hearth-600 bg-hearth-50 px-2 py-0.5 rounded-full">On</span>
+      </button>
+
+      <button data-opt="report" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
+        <span class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
+          <svg style="width:18px;height:18px" class="text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4v16"/><path d="M4 5h11l-2 4 2 4H4"/>
+          </svg>
+        </span>
+        <span class="text-[14.5px] font-semibold text-left flex-1">Report</span>
+        <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+
+      <button data-opt="unmatch" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
+        <span class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+          <svg style="width:18px;height:18px" class="text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7.5-4.7-9.4-9.2C1.1 8.2 3 5 6.3 5c2 0 3.4 1.1 4.2 2.3l1.5 2 1.5-2C14.3 6.1 15.7 5 17.7 5 21 5 22.9 8.2 21.4 11.8 19.5 16.3 12 21 12 21z"/>
+            <path d="M3 3l18 18"/>
+          </svg>
+        </span>
+        <span class="text-[14.5px] font-semibold text-left flex-1 text-red-600">Unmatch</span>
+      </button>
+    </div>
+
+    <div class="px-5 pt-1 pb-5">
+      <button id="chatOptionsCancel"
+        class="w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     PARTNER PROFILE SHEET
+     ============================================================ -->
+<div id="partnerProfileSheet" class="hidden fixed inset-0 z-[75] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
+  <div id="partnerProfilePanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
+    <div class="w-10 h-1 rounded-full bg-line mx-auto mt-3 mb-3"></div>
+
+    <div class="px-5 pb-5 max-h-[78vh] overflow-y-auto no-scrollbar">
+      <div class="flex items-start gap-4">
+        <img id="profileSheetAvatar" class="w-20 h-20 rounded-2xl object-cover bg-hearth-100 shrink-0" alt="" />
+        <div class="flex-1 min-w-0 pt-1">
+          <h3 id="profileSheetName" class="text-[20px] font-extrabold tracking-tight leading-tight truncate">Match</h3>
+          <p id="profileSheetCity" class="text-[13px] text-muted mt-1 truncate"></p>
+          <div id="profileSheetTags" class="flex flex-wrap gap-1.5 mt-2.5"></div>
+        </div>
+      </div>
+
+      <div class="mt-5">
+        <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted mb-2">About</p>
+        <p id="profileSheetBio" class="text-[14px] leading-relaxed text-charcoal whitespace-pre-wrap">No bio yet.</p>
+      </div>
+
+      <button id="profileSheetClose"
+        class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     CONFIRM MODAL (Unmatch, Report)
+     ============================================================ -->
+<div id="confirmModal" class="hidden fixed inset-0 z-[85] items-center justify-center p-6 bg-charcoal/70 backdrop-blur-sm overlay">
+  <div class="w-full max-w-[340px] bg-cream rounded-[24px] p-6 text-center pop shadow-card">
+    <div id="confirmIcon" class="w-14 h-14 mx-auto rounded-full bg-red-50 flex items-center justify-center mb-4">
+      <svg style="width:26px;height:26px" class="text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 9v4"/><circle cx="12" cy="16.5" r="0.8" fill="currentColor"/>
+        <path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+      </svg>
+    </div>
+    <h3 id="confirmTitle" class="text-[18px] font-extrabold tracking-tight">Are you sure?</h3>
+    <p id="confirmBody" class="text-[13px] text-muted mt-2 leading-relaxed">This can't be undone.</p>
+
+    <button id="confirmYes"
+      class="mt-6 w-full py-3.5 rounded-full bg-red-500 text-white font-extrabold text-[15px] active:scale-[.98] transition">
+      Yes, continue
+    </button>
+    <button id="confirmNo"
+      class="mt-2.5 w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
+      Cancel
     </button>
   </div>
 </div>
@@ -593,7 +733,7 @@
      TOAST
      ============================================================ -->
 <div id="toast"
-  class="fixed left-1/2 -translate-x-1/2 bottom-[86px] z-[70] px-4 py-3 rounded-[14px] bg-charcoal text-cream text-[13px] font-medium shadow-card opacity-0 pointer-events-none max-w-[340px] text-center">
+  class="fixed left-1/2 -translate-x-1/2 bottom-[86px] z-[90] px-4 py-3 rounded-[14px] bg-charcoal text-cream text-[13px] font-medium shadow-card opacity-0 pointer-events-none max-w-[340px] text-center">
 </div>
 
 
@@ -605,7 +745,7 @@
 'use strict';
 
 /* ============================================================
- * 0. CONFIG (values injected by /config.js from server env)
+ * 0. CONFIG
  * ========================================================== */
 const SUPABASE_URL      = window.SUPABASE_URL      || '';
 const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
@@ -613,12 +753,6 @@ const API_BASE          = window.HEARTHSIDE_API    || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('[hearthside] Missing Supabase config. /config.js returned empty values.');
-  document.addEventListener('DOMContentLoaded', () => {
-    const banner = document.createElement('div');
-    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:14px;background:#fee;color:#900;font:600 13px/1.4 Inter,sans-serif;text-align:center;z-index:9999';
-    banner.textContent = 'Configuration missing. Check that SUPABASE_URL and SUPABASE_ANON_KEY are set on the server.';
-    document.body.appendChild(banner);
-  });
 }
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -655,6 +789,8 @@ const state = {
   lastPassed: null,
   matchedProfileIds: new Set(),
   realtimeChannel: null,
+  call: null,                  // active call state
+  mutedMatches: new Set(),     // match IDs with notifications muted
 };
 
 /* ============================================================
@@ -697,6 +833,12 @@ function clockTime(isoString) {
   return new Date(isoString).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+function fmtDuration(seconds) {
+  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const ss = String(seconds % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
 let toastTimer;
 function toast(message, ms = 2400) {
   const el = $('#toast');
@@ -722,86 +864,53 @@ async function api(path, { method = 'GET', body, auth = true } = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (auth) {
     const token = await getToken();
-    if (!token) {
-      const err = new Error('Not authenticated');
-      err.status = 401;
-      throw err;
-    }
+    if (!token) { const e = new Error('Not authenticated'); e.status = 401; throw e; }
     headers.Authorization = `Bearer ${token}`;
   }
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
+  const res = await fetch(`${API_BASE}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(data.error || `Request failed (${res.status})`);
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
+  if (!res.ok) { const e = new Error(data.error || `Request failed (${res.status})`); e.status = res.status; e.data = data; throw e; }
   return data;
 }
 
 async function safeApi(path, options, emptyFallback) {
-  try {
-    return await api(path, options);
-  } catch (err) {
+  try { return await api(path, options); }
+  catch (err) {
     console.error(`[hearthside] ${path} failed:`, err.message);
-    if (emptyFallback !== undefined) {
-      return typeof emptyFallback === 'function' ? emptyFallback() : emptyFallback;
-    }
+    if (emptyFallback !== undefined) return typeof emptyFallback === 'function' ? emptyFallback() : emptyFallback;
     throw err;
   }
 }
 
 /* ============================================================
- * 4. AUTH SCREEN
+ * 4. AUTH
  * ========================================================== */
 let authMode = 'signin';
 
 function setAuthMode(mode) {
   authMode = mode;
   const isSignUp = mode === 'signup';
-
   $('#tabSignIn').classList.toggle('bg-white', !isSignUp);
   $('#tabSignIn').classList.toggle('shadow-soft', !isSignUp);
   $('#tabSignIn').classList.toggle('text-muted', isSignUp);
-
   $('#tabSignUp').classList.toggle('bg-white', isSignUp);
   $('#tabSignUp').classList.toggle('shadow-soft', isSignUp);
   $('#tabSignUp').classList.toggle('text-muted', !isSignUp);
-
   $('#signupFields').classList.toggle('hidden', !isSignUp);
   $('#authSubmit').textContent = isSignUp ? 'Create account' : 'Sign in';
-
   hideAuthError();
 }
 
-function showAuthError(message) {
-  const el = $('#authError');
-  el.textContent = message;
-  el.classList.remove('hidden');
-}
-function hideAuthError() {
-  $('#authError').classList.add('hidden');
-}
+function showAuthError(message) { const el = $('#authError'); el.textContent = message; el.classList.remove('hidden'); }
+function hideAuthError() { $('#authError').classList.add('hidden'); }
 
 async function handleAuthSubmit(e) {
   e.preventDefault();
   hideAuthError();
-
   const email = $('#authEmail').value.trim();
   const password = $('#authPassword').value;
   const submit = $('#authSubmit');
-
-  if (!email || !password) {
-    showAuthError('Please fill in email and password.');
-    return;
-  }
+  if (!email || !password) { showAuthError('Please fill in email and password.'); return; }
 
   submit.disabled = true;
   submit.classList.add('opacity-80');
@@ -814,38 +923,24 @@ async function handleAuthSubmit(e) {
       const age = parseInt($('#authAge').value, 10);
       const gender = $('#authGender').value;
       const city = $('#authCity').value.trim();
-
       if (!name) throw new Error('Please enter your name.');
       if (!age || age < 18) throw new Error('You must be 18 or older.');
 
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name, age, gender, city },
-        },
+        email, password, options: { data: { name, age, gender, city } },
       });
-
       if (error) throw error;
-
       if (!data.session) {
         showAuthError('Check your email to confirm your account, then sign in.');
         setAuthMode('signin');
         return;
       }
-
-      const userId = data.user.id;
-      await supabase.from('profiles').update({
-        name, age, gender, city,
-      }).eq('id', userId);
-
+      await supabase.from('profiles').update({ name, age, gender, city }).eq('id', data.user.id);
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
     }
-
     await enterApp();
-
   } catch (err) {
     console.error('[auth]', err);
     showAuthError(err.message || 'Authentication failed.');
@@ -858,16 +953,13 @@ async function handleAuthSubmit(e) {
 
 async function handleSignOut() {
   await supabase.auth.signOut();
-  state.myId = null;
-  state.myProfile = null;
-  state.deck = [];
-  state.matches = [];
-  state.messages = {};
+  state.myId = null; state.myProfile = null;
+  state.deck = []; state.matches = []; state.messages = {};
   state.matchedProfileIds.clear();
-  if (state.realtimeChannel) {
-    supabase.removeChannel(state.realtimeChannel);
-    state.realtimeChannel = null;
-  }
+  if (state.realtimeChannel) { supabase.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
+  endCall(true);
+  closeChatOptions();
+  closePartnerProfile();
   $$('.screen').forEach((s) => s.classList.remove('active'));
   $('#screen-auth').classList.add('active');
   $('#bottomNav').classList.add('hidden');
@@ -899,10 +991,7 @@ function renderNav() {
       <span class="text-[10.5px] font-semibold nav-label">${item.label}</span>
     </button>
   `).join('');
-
-  $$('#navItems .nav-btn').forEach((btn) => {
-    btn.addEventListener('click', () => showScreen(btn.dataset.nav));
-  });
+  $$('#navItems .nav-btn').forEach((btn) => btn.addEventListener('click', () => showScreen(btn.dataset.nav)));
   paintNav();
 }
 
@@ -919,11 +1008,9 @@ function paintNav() {
 
 function showScreen(name) {
   state.screen = name;
-
   $$('.screen').forEach((s) => s.classList.remove('active'));
   const target = $(`#screen-${name}`);
   if (target) target.classList.add('active');
-
   const nav = $('#bottomNav');
   nav.classList.toggle('hidden', !SCREENS_WITH_NAV.includes(name));
 
@@ -943,14 +1030,12 @@ function renderLikesMeter() {
   const { used, limit, isPremium } = state.likes;
   const counter = $('#likeCounter');
   const dots = $('#likeDots');
-
   if (isPremium) {
     counter.textContent = 'Unlimited likes';
     counter.classList.add('text-hearth-600');
     dots.innerHTML = `<span class="text-[11px] font-bold text-hearth-600">Member+</span>`;
     return;
   }
-
   counter.classList.remove('text-hearth-600');
   counter.textContent = `${used} of ${limit} today`;
   dots.innerHTML = Array.from({ length: limit }, (_, i) =>
@@ -963,20 +1048,12 @@ function renderLikesMeter() {
  * ========================================================== */
 async function loadDeck() {
   let coords = null;
-  try {
-    coords = await getUserLocation();
-  } catch {
-    // fallback to profile location handled server-side
-  }
-
+  try { coords = await getUserLocation(); } catch { /* fallback server-side */ }
   const qs = coords ? `?lat=${coords.lat}&lng=${coords.lng}` : '';
   const data = await safeApi(`/api/discover${qs}`, {}, {
-    profiles: [],
-    likes: { used: 0, limit: 8, remaining: 8, is_premium: state.isPremium },
+    profiles: [], likes: { used: 0, limit: 8, remaining: 8, is_premium: state.isPremium },
   });
-
   state.deck = (data.profiles || []).slice();
-
   if (data.likes) {
     state.likes.used = data.likes.used ?? 0;
     state.likes.limit = data.likes.limit ?? 8;
@@ -1060,50 +1137,38 @@ function renderDeck() {
     return;
   }
 
-  stack.innerHTML =
-    (state.deck[1] ? cardHTML(state.deck[1], false) : '') +
-    cardHTML(top, true);
-
+  stack.innerHTML = (state.deck[1] ? cardHTML(state.deck[1], false) : '') + cardHTML(top, true);
   wireFallbacks(stack);
   attachSwipe($('.profile-card[style*="z-index:2"]', stack));
 }
 
 function attachSwipe(card) {
   if (!card) return;
-
   let startX = 0, startY = 0, dx = 0, dy = 0, dragging = false;
 
   const onDown = (e) => {
     if (state.animating) return;
     dragging = true;
     const p = e.touches ? e.touches[0] : e;
-    startX = p.clientX; startY = p.clientY;
-    dx = 0; dy = 0;
+    startX = p.clientX; startY = p.clientY; dx = 0; dy = 0;
     card.style.transition = 'none';
     card.setPointerCapture?.(e.pointerId);
   };
-
   const onMove = (e) => {
     if (!dragging) return;
     const p = e.touches ? e.touches[0] : e;
-    dx = p.clientX - startX;
-    dy = p.clientY - startY;
+    dx = p.clientX - startX; dy = p.clientY - startY;
     const rot = dx / 22;
     card.style.transform = `translate(${dx}px, ${dy * 0.25}px) rotate(${rot}deg)`;
     card.style.opacity = String(Math.max(0.6, 1 - Math.abs(dx) / 700));
   };
-
   const onUp = () => {
     if (!dragging) return;
     dragging = false;
     card.style.transition = 'transform .3s cubic-bezier(.2,.9,.3,1.1), opacity .3s ease';
-
-    if (dx > 92)       commitSwipe('like');
+    if (dx > 92) commitSwipe('like');
     else if (dx < -92) commitSwipe('pass');
-    else {
-      card.style.transform = 'translate(0,0) rotate(0deg)';
-      card.style.opacity = '1';
-    }
+    else { card.style.transform = 'translate(0,0) rotate(0deg)'; card.style.opacity = '1'; }
   };
 
   card.addEventListener('pointerdown', onDown);
@@ -1133,12 +1198,10 @@ async function commitSwipe(direction) {
   card.style.transition = 'transform .42s cubic-bezier(.3,.9,.4,1), opacity .42s ease';
   card.style.transform = `translate(${dir * 560}px, -18px) rotate(${dir * 26}deg)`;
   card.style.opacity = '0';
-
   await wait(300);
 
   state.deck.shift();
   if (direction === 'pass') state.lastPassed = profile;
-
   if (direction === 'like' && !state.likes.isPremium) {
     state.likes.used = Math.min(state.likes.limit, state.likes.used + 1);
     renderLikesMeter();
@@ -1150,8 +1213,7 @@ async function commitSwipe(direction) {
     method: 'POST',
     body: { likee_id: profile.id, is_like: direction === 'like' },
   }, {
-    matched: false,
-    partner: null,
+    matched: false, partner: null,
     likes: { used: state.likes.used, limit: state.likes.limit, is_premium: state.likes.isPremium },
   });
 
@@ -1174,14 +1236,8 @@ async function commitSwipe(direction) {
 function registerMatch(partner, matchRow) {
   if (state.matchedProfileIds.has(partner.id)) return;
   state.matchedProfileIds.add(partner.id);
-
   const id = matchRow?.id || ('local-' + partner.id);
-  state.matches.unshift({
-    id,
-    partner,
-    last_message: null,
-    unread_count: 0,
-  });
+  state.matches.unshift({ id, partner, last_message: null, unread_count: 0 });
   state.messages[id] = [];
 }
 
@@ -1198,12 +1254,10 @@ function showMatchModal(partner) {
   $('#matchAvatarThem').src = partner.avatar_url || '';
   $('#matchAvatarThem').dataset.fallback = partner.name;
   wireFallbacks($('#matchModal'));
-
   const modal = $('#matchModal');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
 }
-
 function hideMatchModal() {
   const modal = $('#matchModal');
   modal.classList.add('hidden');
@@ -1217,10 +1271,7 @@ function updateLikesBanner() {
   const count = Math.max(state.likesYouCount, state.matchedProfileIds.size);
   $('#likesBannerCount').textContent = String(count);
   $('#likesLockedCount').textContent = String(count);
-
-  $('#likesBannerSub').textContent = state.isPremium
-    ? 'Tap to see everyone'
-    : 'Unlock to see who they are';
+  $('#likesBannerSub').textContent = state.isPremium ? 'Tap to see everyone' : 'Unlock to see who they are';
 }
 
 /* ============================================================
@@ -1232,9 +1283,7 @@ async function renderLikes() {
   $('#likesUnlocked').classList.toggle('hidden', locked);
 
   const data = await safeApi('/api/premium/likes', {}, {
-    is_premium: state.isPremium,
-    total: 0,
-    likes: [],
+    is_premium: state.isPremium, total: 0, likes: [],
   });
 
   state.likesYouCount = data.total || 0;
@@ -1243,7 +1292,6 @@ async function renderLikes() {
   if (locked) {
     const teasers = data.likes || [];
     const grid = $('#likesBlurGrid');
-
     if (!teasers.length) {
       grid.innerHTML = `
         <div class="col-span-3 bg-white rounded-card border border-line shadow-soft p-7 text-center">
@@ -1252,7 +1300,6 @@ async function renderLikes() {
         </div>`;
       return;
     }
-
     grid.innerHTML = teasers.map((l) => {
       const p = l.teaser || {};
       return `
@@ -1275,7 +1322,6 @@ async function renderLikes() {
 
   const likes = data.likes || [];
   const grid = $('#likesGrid');
-
   if (!likes.length) {
     grid.innerHTML = `
       <div class="col-span-2 bg-white rounded-card border border-line shadow-soft p-7 text-center">
@@ -1293,8 +1339,7 @@ async function renderLikes() {
         <div class="relative aspect-[4/5] bg-hearth-100">
           <img src="${esc(p.avatar_url || '')}" data-fallback="${esc(p.name || '?')}"
                class="absolute inset-0 w-full h-full object-cover" alt="" />
-          ${l.already_matched ? `
-            <span class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">Matched</span>` : ''}
+          ${l.already_matched ? `<span class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">Matched</span>` : ''}
         </div>
         <div class="p-3">
           <p class="text-[14px] font-bold truncate">${esc(p.name || 'Someone')}${p.age ? `, ${esc(p.age)}` : ''}</p>
@@ -1356,7 +1401,7 @@ async function renderMatches() {
 }
 
 /* ============================================================
- * 12. MESSAGES LIST
+ * 12. THREADS
  * ========================================================== */
 async function renderThreads() {
   if (!state.matches.length) {
@@ -1365,7 +1410,6 @@ async function renderThreads() {
   }
 
   const list = $('#threadList');
-
   if (!state.matches.length) {
     list.innerHTML = `
       <div class="bg-white rounded-card border border-line shadow-soft p-7 text-center">
@@ -1381,31 +1425,34 @@ async function renderThreads() {
     const preview = last
       ? (last.media_url && !last.content ? '📷 Photo' : last.content)
       : 'You matched — say hello 👋';
-
+    const muted = state.mutedMatches.has(m.id);
     return `
       <button class="w-full flex items-center gap-3 bg-white rounded-card border border-line/70 shadow-soft p-3 text-left active:scale-[.99] transition thread"
               data-match="${esc(m.id)}">
         <div class="relative shrink-0">
           <img src="${esc(p.avatar_url || '')}" data-fallback="${esc(p.name || '?')}"
                class="w-[52px] h-[52px] rounded-full object-cover bg-hearth-100" alt="" />
-          ${m.unread_count ? `<span class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-hearth border-2 border-white"></span>` : ''}
+          ${m.unread_count && !muted ? `<span class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-hearth border-2 border-white"></span>` : ''}
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-baseline justify-between gap-2">
             <p class="text-[14.5px] font-bold truncate">${esc(p.name || 'Match')}</p>
             <span class="text-[11px] text-muted shrink-0">${last ? timeAgo(last.created_at) : ''}</span>
           </div>
-          <p class="text-[12.5px] text-muted truncate mt-0.5 ${m.unread_count ? 'font-semibold text-charcoal' : ''}">
+          <p class="text-[12.5px] text-muted truncate mt-0.5 ${m.unread_count && !muted ? 'font-semibold text-charcoal' : ''}">
             ${esc(preview)}
           </p>
         </div>
+        ${muted ? `
+          <svg class="w-4 h-4 text-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 8a6 6 0 0 1 12 0v4.5l1.5 3h-15L6 12.5z"/>
+            <path d="M3 3l18 18"/>
+          </svg>` : ''}
       </button>`;
   }).join('');
 
   wireFallbacks(list);
-  $$('.thread', list).forEach((btn) => {
-    btn.addEventListener('click', () => openChat(btn.dataset.match));
-  });
+  $$('.thread', list).forEach((btn) => btn.addEventListener('click', () => openChat(btn.dataset.match)));
 }
 
 /* ============================================================
@@ -1427,27 +1474,23 @@ async function openChat(matchId) {
   const data = await safeApi(`/api/messages/${encodeURIComponent(matchId)}`, {}, {
     messages: state.messages[matchId] || [],
   });
-
   state.messages[matchId] = data.messages || [];
   match.unread_count = 0;
 
   renderMessages();
   showScreen('chat');
   requestAnimationFrame(scrollChatToBottom);
-
   subscribeToMatch(matchId);
 }
 
 function renderMessages() {
   const list = $('#chatMessages');
   const msgs = state.messages[state.activeMatchId] || [];
-
   list.innerHTML = msgs.map((m) => {
     const mine = m.sender_id === state.myId;
     const media = m.media_url
       ? `<img src="${esc(m.media_url)}" class="rounded-[14px] max-w-full w-[220px] object-cover mb-1.5" alt="" onerror="this.style.display='none'" />`
       : '';
-
     return `
       <div class="flex ${mine ? 'justify-end' : 'justify-start'}">
         <div class="max-w-[78%] px-3.5 py-2.5 ${mine ? 'bubble-out' : 'bubble-in'}">
@@ -1468,7 +1511,6 @@ async function sendMessage() {
   const input = $('#chatInput');
   const text = input.value.trim();
   if (!text || !state.activeMatchId) return;
-
   input.value = '';
   input.style.height = 'auto';
 
@@ -1480,11 +1522,9 @@ async function sendMessage() {
     media_url: null,
     created_at: new Date().toISOString(),
   };
-
   (state.messages[state.activeMatchId] ||= []).push(msg);
   renderMessages();
   scrollChatToBottom();
-
   const match = state.matches.find((m) => m.id === state.activeMatchId);
   if (match) match.last_message = msg;
 
@@ -1499,22 +1539,17 @@ function subscribeToMatch(matchId) {
     supabase.removeChannel(state.realtimeChannel);
     state.realtimeChannel = null;
   }
-
   state.realtimeChannel = supabase
     .channel(`match-${matchId}`)
     .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'messages',
+      event: 'INSERT', schema: 'public', table: 'messages',
       filter: `match_id=eq.${matchId}`,
     }, (payload) => {
       const msg = payload.new;
       if (msg.sender_id === state.myId) return;
-
       const list = (state.messages[matchId] ||= []);
       if (list.some((m) => m.id === msg.id)) return;
       list.push(msg);
-
       if (state.activeMatchId === matchId && state.screen === 'chat') {
         renderMessages();
         scrollChatToBottom();
@@ -1524,7 +1559,343 @@ function subscribeToMatch(matchId) {
 }
 
 /* ============================================================
- * 14. PAYWALL
+ * 14. CALLS (Video & Voice) — simulated flow
+ * ========================================================== */
+function openCall(kind) {
+  const match = state.matches.find((m) => m.id === state.activeMatchId);
+  if (!match) return;
+  const p = match.partner || {};
+
+  state.call = {
+    kind,                       // 'video' | 'voice'
+    partner: p,
+    startedAt: null,
+    muted: false,
+    speaker: false,
+    videoOn: kind === 'video',
+    ringTimeout: null,
+    connectTimeout: null,
+    timerInterval: null,
+  };
+
+  // ---- Populate UI ----
+  $('#callKindLabel').textContent = kind === 'video' ? 'Video call' : 'Voice call';
+  $('#callPartnerName').textContent = p.name || 'Match';
+  $('#callPartnerVideo').src = p.avatar_url || '';
+  $('#callPartnerVideo').dataset.fallback = p.name || '?';
+  $('#callPartnerAvatar').src = p.avatar_url || '';
+  $('#callPartnerAvatar').dataset.fallback = p.name || '?';
+  $('#callSelfVideo').src = state.myProfile?.avatar_url || '';
+  $('#callSelfVideo').dataset.fallback = state.myProfile?.name || 'You';
+  wireFallbacks($('#callOverlay'));
+
+  $('#callStatusText').textContent = 'Calling…';
+  $('#callTimer').classList.add('hidden');
+  $('#callTimer').textContent = '00:00';
+
+  // Video vs voice layout
+  if (kind === 'video') {
+    $('#callVideoLayer').classList.remove('hidden');
+    $('#callAvatarWrap').classList.add('hidden');
+    $('#callSelfPreview').classList.remove('hidden');
+    $('#callVideoToggleBtn').classList.remove('hidden');
+  } else {
+    $('#callVideoLayer').classList.add('hidden');
+    $('#callAvatarWrap').classList.remove('hidden');
+    $('#callSelfPreview').classList.add('hidden');
+    $('#callVideoToggleBtn').classList.add('hidden');
+  }
+
+  updateCallControls();
+
+  // Show overlay
+  const overlay = $('#callOverlay');
+  overlay.classList.remove('hidden');
+  overlay.classList.add('flex');
+
+  // ---- Simulated ringing → connected ----
+  // NOTE: This is a UI simulation. To make real calls, wire WebRTC here:
+  //   1. Create an RTCPeerConnection
+  //   2. Send SDP offer via Supabase Realtime channel to the partner
+  //   3. Exchange ICE candidates
+  //   4. On answer, attach remote stream to #callPartnerVideo
+  state.call.ringTimeout = setTimeout(() => {
+    if (!state.call) return;
+    $('#callStatusText').textContent = 'Ringing…';
+  }, 1200);
+
+  state.call.connectTimeout = setTimeout(() => {
+    if (!state.call) return;
+    connectCall();
+  }, 3200);
+}
+
+function connectCall() {
+  if (!state.call) return;
+  state.call.startedAt = Date.now();
+  $('#callStatusText').textContent = 'Connected';
+  $('#callTimer').classList.remove('hidden');
+
+  clearInterval(state.call.timerInterval);
+  state.call.timerInterval = setInterval(() => {
+    if (!state.call || !state.call.startedAt) return;
+    const elapsed = Math.floor((Date.now() - state.call.startedAt) / 1000);
+    $('#callTimer').textContent = fmtDuration(elapsed);
+  }, 1000);
+}
+
+function endCall(silent = false) {
+  if (!state.call) {
+    // No active call but make sure overlay is hidden
+    const overlay = $('#callOverlay');
+    if (overlay) { overlay.classList.add('hidden'); overlay.classList.remove('flex'); }
+    return;
+  }
+
+  const partner = state.call.partner;
+  const wasConnected = !!state.call.startedAt;
+  const duration = wasConnected ? Math.floor((Date.now() - state.call.startedAt) / 1000) : 0;
+
+  clearTimeout(state.call.ringTimeout);
+  clearTimeout(state.call.connectTimeout);
+  clearInterval(state.call.timerInterval);
+  state.call = null;
+
+  const overlay = $('#callOverlay');
+  overlay.classList.add('hidden');
+  overlay.classList.remove('flex');
+
+  if (!silent && partner) {
+    if (wasConnected) {
+      toast(`Call with ${partner.name} ended • ${fmtDuration(duration)}`);
+    } else {
+      toast(`Call cancelled`);
+    }
+  }
+}
+
+function updateCallControls() {
+  if (!state.call) return;
+
+  // Mute icon swap
+  $('#callMuteBtn').classList.toggle('off', state.call.muted);
+  $('.icon-mic-on', $('#callMuteBtn')).classList.toggle('hidden', state.call.muted);
+  $('.icon-mic-off', $('#callMuteBtn')).classList.toggle('hidden', !state.call.muted);
+
+  // Speaker icon state
+  $('#callSpeakerBtn').classList.toggle('off', state.call.speaker);
+
+  // Video toggle
+  const videoBtn = $('#callVideoToggleBtn');
+  videoBtn.classList.toggle('off', !state.call.videoOn);
+  $('.icon-cam-on', videoBtn).classList.toggle('hidden', !state.call.videoOn);
+  $('.icon-cam-off', videoBtn).classList.toggle('hidden', state.call.videoOn);
+  $('#callSelfPreview').classList.toggle('hidden', !state.call.videoOn);
+}
+
+function toggleCallMute() {
+  if (!state.call) return;
+  state.call.muted = !state.call.muted;
+  updateCallControls();
+  toast(state.call.muted ? 'Microphone muted' : 'Microphone on', 1400);
+}
+
+function toggleCallSpeaker() {
+  if (!state.call) return;
+  state.call.speaker = !state.call.speaker;
+  updateCallControls();
+  toast(state.call.speaker ? 'Speaker on' : 'Speaker off', 1400);
+}
+
+function toggleCallVideo() {
+  if (!state.call || state.call.kind !== 'video') return;
+  state.call.videoOn = !state.call.videoOn;
+  updateCallControls();
+}
+
+/* ============================================================
+ * 15. CHAT OPTIONS SHEET
+ * ========================================================== */
+function openChatOptions() {
+  const sheet = $('#chatOptionsSheet');
+  const panel = $('#chatOptionsPanel');
+  panel.classList.remove('sheet-out');
+  panel.classList.add('sheet-in');
+  sheet.classList.remove('hidden');
+  sheet.classList.add('flex');
+
+  // Refresh mute label
+  const muted = state.mutedMatches.has(state.activeMatchId);
+  $('#muteOptLabel').textContent = muted ? 'Unmute notifications' : 'Mute notifications';
+  $('#muteOptBadge').classList.toggle('hidden', !muted);
+}
+
+function closeChatOptions() {
+  const sheet = $('#chatOptionsSheet');
+  const panel = $('#chatOptionsPanel');
+  panel.classList.remove('sheet-in');
+  panel.classList.add('sheet-out');
+  setTimeout(() => {
+    sheet.classList.add('hidden');
+    sheet.classList.remove('flex');
+    panel.classList.remove('sheet-out');
+  }, 200);
+}
+
+function handleChatOption(opt) {
+  switch (opt) {
+    case 'profile':
+      closeChatOptions();
+      setTimeout(openPartnerProfile, 220);
+      break;
+
+    case 'mute': {
+      const id = state.activeMatchId;
+      if (state.mutedMatches.has(id)) {
+        state.mutedMatches.delete(id);
+        toast('Notifications unmuted');
+      } else {
+        state.mutedMatches.add(id);
+        toast('Notifications muted');
+      }
+      closeChatOptions();
+      break;
+    }
+
+    case 'report':
+      closeChatOptions();
+      setTimeout(() => {
+        openConfirm({
+          icon: 'flag',
+          title: 'Report this user?',
+          body: 'Our team will review the conversation and take action if needed. This user will not be notified.',
+          confirmLabel: 'Report',
+          onConfirm: () => {
+            toast('Report submitted. Thank you.');
+            closeConfirm();
+          },
+        });
+      }, 220);
+      break;
+
+    case 'unmatch':
+      closeChatOptions();
+      setTimeout(() => {
+        openConfirm({
+          icon: 'unmatch',
+          title: 'Unmatch?',
+          body: 'This conversation will be removed for both of you. You will no longer see each other in Discover.',
+          confirmLabel: 'Unmatch',
+          onConfirm: () => doUnmatch(),
+        });
+      }, 220);
+      break;
+  }
+}
+
+/* ============================================================
+ * 16. PARTNER PROFILE SHEET
+ * ========================================================== */
+function openPartnerProfile() {
+  const match = state.matches.find((m) => m.id === state.activeMatchId);
+  if (!match) return;
+  const p = match.partner || {};
+
+  $('#profileSheetAvatar').src = p.avatar_url || '';
+  $('#profileSheetAvatar').dataset.fallback = p.name || '?';
+  $('#profileSheetName').textContent = `${p.name || 'Match'}${p.age ? `, ${p.age}` : ''}`;
+  $('#profileSheetCity').textContent = p.city || '';
+  $('#profileSheetBio').textContent = p.bio || 'No bio yet.';
+  $('#profileSheetTags').innerHTML = (p.tags || []).map((t) =>
+    `<span class="px-2.5 py-1 rounded-full bg-hearth-50 text-hearth-600 text-[11px] font-semibold">${esc(t)}</span>`
+  ).join('');
+  wireFallbacks($('#partnerProfileSheet'));
+
+  const sheet = $('#partnerProfileSheet');
+  const panel = $('#partnerProfilePanel');
+  panel.classList.remove('sheet-out');
+  panel.classList.add('sheet-in');
+  sheet.classList.remove('hidden');
+  sheet.classList.add('flex');
+}
+
+function closePartnerProfile() {
+  const sheet = $('#partnerProfileSheet');
+  const panel = $('#partnerProfilePanel');
+  if (!sheet || sheet.classList.contains('hidden')) return;
+  panel.classList.remove('sheet-in');
+  panel.classList.add('sheet-out');
+  setTimeout(() => {
+    sheet.classList.add('hidden');
+    sheet.classList.remove('flex');
+    panel.classList.remove('sheet-out');
+  }, 200);
+}
+
+/* ============================================================
+ * 17. CONFIRM MODAL
+ * ========================================================== */
+let confirmHandler = null;
+
+const CONFIRM_ICONS = {
+  flag: `<svg style="width:26px;height:26px" class="text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 4v16"/><path d="M4 5h11l-2 4 2 4H4"/>
+  </svg>`,
+  unmatch: `<svg style="width:26px;height:26px" class="text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 21s-7.5-4.7-9.4-9.2C1.1 8.2 3 5 6.3 5c2 0 3.4 1.1 4.2 2.3l1.5 2 1.5-2C14.3 6.1 15.7 5 17.7 5 21 5 22.9 8.2 21.4 11.8 19.5 16.3 12 21 12 21z"/>
+    <path d="M3 3l18 18"/>
+  </svg>`,
+};
+
+function openConfirm({ icon = 'unmatch', title, body, confirmLabel = 'Confirm', onConfirm }) {
+  $('#confirmIcon').innerHTML = CONFIRM_ICONS[icon] || CONFIRM_ICONS.unmatch;
+  $('#confirmTitle').textContent = title || 'Are you sure?';
+  $('#confirmBody').textContent = body || '';
+  $('#confirmYes').textContent = confirmLabel;
+  confirmHandler = onConfirm;
+
+  const modal = $('#confirmModal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+function closeConfirm() {
+  const modal = $('#confirmModal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  confirmHandler = null;
+}
+
+/* ============================================================
+ * 18. UNMATCH
+ * ========================================================== */
+async function doUnmatch() {
+  const id = state.activeMatchId;
+  const match = state.matches.find((m) => m.id === id);
+  const partnerName = match?.partner?.name || 'them';
+
+  // Optimistic local removal
+  state.matches = state.matches.filter((m) => m.id !== id);
+  delete state.messages[id];
+  state.mutedMatches.delete(id);
+  if (match?.partner?.id) state.matchedProfileIds.delete(match.partner.id);
+
+  closeConfirm();
+  showScreen('messages');
+  toast(`You unmatched ${partnerName}`);
+
+  // Best-effort server sync — the endpoint may not exist yet.
+  try {
+    await api(`/api/matches/${id}`, { method: 'DELETE' });
+  } catch (err) {
+    if (err.status !== 404) {
+      console.warn('[unmatch] Server sync failed:', err.message);
+    }
+  }
+}
+
+/* ============================================================
+ * 19. PAYWALL
  * ========================================================== */
 function openPaywall() {
   renderPlans();
@@ -1536,9 +1907,7 @@ function renderFeatures() {
   $('#featureList').innerHTML = FEATURES.map((f) => `
     <li class="flex items-start gap-3">
       <span class="mt-0.5 w-5 h-5 shrink-0 rounded-full bg-hearth-50 flex items-center justify-center">
-        <svg class="w-3 h-3 text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M5 12.5l4.5 4.5L19 7"/>
-        </svg>
+        <svg class="w-3 h-3 text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
       </span>
       <span class="text-[13.5px] leading-snug">${esc(f)}</span>
     </li>
@@ -1550,7 +1919,6 @@ function renderPlans() {
     const active = card.dataset.plan === state.selectedPlan;
     card.classList.toggle('border-hearth', active);
     card.classList.toggle('border-line', !active);
-
     let check = $('.plan-check', card);
     if (active && !check) {
       check = document.createElement('span');
@@ -1562,7 +1930,6 @@ function renderPlans() {
       check.remove();
     }
   });
-
   const plan = PLANS[state.selectedPlan];
   $('#payBtnLabel').textContent = `Pay ${plan.amount_etb.toLocaleString('en-US')} ETB with Tele Birr`;
 }
@@ -1571,15 +1938,13 @@ async function payWithTelebirr() {
   const btn = $('#payBtn');
   const label = $('#payBtnLabel');
   const original = label.textContent;
-
   btn.disabled = true;
   btn.classList.add('opacity-80');
   label.textContent = 'Connecting to Tele Birr…';
 
   try {
     const init = await safeApi('/api/payments/telebirr/initiate', {
-      method: 'POST',
-      body: { plan_type: state.selectedPlan },
+      method: 'POST', body: { plan_type: state.selectedPlan },
     }, null);
 
     if (!init) {
@@ -1587,23 +1952,17 @@ async function payWithTelebirr() {
       toast('Could not reach payment server.');
       return;
     }
-
     if (init.mode === 'live' && init.checkout_url) {
       label.textContent = 'Redirecting…';
       window.location.href = init.checkout_url;
       return;
     }
-
     label.textContent = 'Waiting for approval…';
     await wait(1500);
-
     await safeApi('/api/payments/mock-confirm', {
-      method: 'POST',
-      body: { txn_id: init.txn_id },
+      method: 'POST', body: { txn_id: init.txn_id },
     }, { is_premium: true });
-
     unlockPremium();
-
   } catch (err) {
     console.error(err);
     toast(err.data?.error || 'Payment could not be completed. Please try again.');
@@ -1619,34 +1978,22 @@ function unlockPremium() {
   state.likes.isPremium = true;
   renderLikesMeter();
   updateLikesBanner();
-
   const modal = $('#premiumModal');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
 }
 
 /* ============================================================
- * 15. MISC ACTIONS
+ * 20. MISC ACTIONS
  * ========================================================== */
 function handleFilter() {
-  if (!state.isPremium) {
-    toast('Advanced filters are part of Member+.');
-    openPaywall();
-    return;
-  }
+  if (!state.isPremium) { toast('Advanced filters are part of Member+.'); openPaywall(); return; }
   toast('Filters coming soon — distance, age and tags.');
 }
 
 function handleUndo() {
-  if (!state.isPremium) {
-    toast('Undo is a Member+ feature.');
-    openPaywall();
-    return;
-  }
-  if (!state.lastPassed) {
-    toast('Nothing to undo yet.');
-    return;
-  }
+  if (!state.isPremium) { toast('Undo is a Member+ feature.'); openPaywall(); return; }
+  if (!state.lastPassed) { toast('Nothing to undo yet.'); return; }
   state.deck.unshift(state.lastPassed);
   state.lastPassed = null;
   renderDeck();
@@ -1654,13 +2001,15 @@ function handleUndo() {
 }
 
 /* ============================================================
- * 16. EVENT BINDING
+ * 21. EVENT BINDING
  * ========================================================== */
 function bindEvents() {
+  // ---- Auth ----
   $('#tabSignIn').addEventListener('click', () => setAuthMode('signin'));
   $('#tabSignUp').addEventListener('click', () => setAuthMode('signup'));
   $('#authForm').addEventListener('submit', handleAuthSubmit);
 
+  // ---- Discover ----
   $('#likeBtn').addEventListener('click', () => commitSwipe('like'));
   $('#passBtn').addEventListener('click', () => commitSwipe('pass'));
   $('#undoBtn').addEventListener('click', handleUndo);
@@ -1670,21 +2019,24 @@ function bindEvents() {
     else openPaywall();
   });
 
+  // ---- Likes ----
   $('#likesUnlockBtn').addEventListener('click', openPaywall);
 
+  // ---- Chat header buttons ----
   $('#chatBack').addEventListener('click', () => showScreen('messages'));
-  $('#sendBtn').addEventListener('click', sendMessage);
+  $('#videoCallBtn').addEventListener('click', () => openCall('video'));
+  $('#voiceCallBtn').addEventListener('click', () => openCall('voice'));
+  $('#chatOptionsBtn').addEventListener('click', openChatOptions);
 
+  // ---- Chat composer ----
+  $('#sendBtn').addEventListener('click', sendMessage);
   const input = $('#chatInput');
   input.addEventListener('input', () => {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 112) + 'px';
   });
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
 
   $('#attachBtn').addEventListener('click', () => $('#fileInput').click());
@@ -1709,15 +2061,42 @@ function bindEvents() {
     e.target.value = '';
   });
 
+  // ---- Call overlay ----
+  $('#callEndBtn').addEventListener('click', () => endCall(false));
+  $('#callMuteBtn').addEventListener('click', toggleCallMute);
+  $('#callSpeakerBtn').addEventListener('click', toggleCallSpeaker);
+  $('#callVideoToggleBtn').addEventListener('click', toggleCallVideo);
+
+  // ---- Chat options sheet ----
+  $$('#chatOptionsSheet .opt-btn').forEach((btn) => {
+    btn.addEventListener('click', () => handleChatOption(btn.dataset.opt));
+  });
+  $('#chatOptionsCancel').addEventListener('click', closeChatOptions);
+  $('#chatOptionsSheet').addEventListener('click', (e) => {
+    if (e.target === $('#chatOptionsSheet')) closeChatOptions();
+  });
+
+  // ---- Partner profile sheet ----
+  $('#profileSheetClose').addEventListener('click', closePartnerProfile);
+  $('#partnerProfileSheet').addEventListener('click', (e) => {
+    if (e.target === $('#partnerProfileSheet')) closePartnerProfile();
+  });
+
+  // ---- Confirm modal ----
+  $('#confirmYes').addEventListener('click', () => { if (confirmHandler) confirmHandler(); });
+  $('#confirmNo').addEventListener('click', closeConfirm);
+  $('#confirmModal').addEventListener('click', (e) => {
+    if (e.target === $('#confirmModal')) closeConfirm();
+  });
+
+  // ---- Paywall ----
   $('#paywallBack').addEventListener('click', () => showScreen('discover'));
   $$('#planList .plan-card').forEach((card) => {
-    card.addEventListener('click', () => {
-      state.selectedPlan = card.dataset.plan;
-      renderPlans();
-    });
+    card.addEventListener('click', () => { state.selectedPlan = card.dataset.plan; renderPlans(); });
   });
   $('#payBtn').addEventListener('click', payWithTelebirr);
 
+  // ---- Match modal ----
   $('#matchKeepSwiping').addEventListener('click', hideMatchModal);
   $('#matchSayHi').addEventListener('click', () => {
     const partner = pendingMatch;
@@ -1728,6 +2107,7 @@ function bindEvents() {
     else showScreen('messages');
   });
 
+  // ---- Premium modal ----
   $('#premiumDone').addEventListener('click', () => {
     const modal = $('#premiumModal');
     modal.classList.add('hidden');
@@ -1735,32 +2115,32 @@ function bindEvents() {
     showScreen('likes');
   });
 
-  $$('.js-coming-soon').forEach((btn) => {
-    btn.addEventListener('click', () => toast(`${btn.dataset.label} coming soon.`));
-  });
-
+  // ---- Escape closes everything ----
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    hideMatchModal();
-    $('#premiumModal').classList.add('hidden');
-    $('#premiumModal').classList.remove('flex');
+    if (state.call) { endCall(false); return; }
+    if (!$('#confirmModal').classList.contains('hidden')) { closeConfirm(); return; }
+    if (!$('#partnerProfileSheet').classList.contains('hidden')) { closePartnerProfile(); return; }
+    if (!$('#chatOptionsSheet').classList.contains('hidden')) { closeChatOptions(); return; }
+    if (!$('#matchModal').classList.contains('hidden')) { hideMatchModal(); return; }
+    if (!$('#premiumModal').classList.contains('hidden')) {
+      $('#premiumModal').classList.add('hidden');
+      $('#premiumModal').classList.remove('flex');
+      return;
+    }
   });
 }
 
 /* ============================================================
- * 17. BOOT
+ * 22. BOOT
  * ========================================================== */
 async function enterApp() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
-
   state.myId = user.id;
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .maybeSingle();
+    .from('profiles').select('*').eq('id', user.id).maybeSingle();
 
   state.myProfile = profile;
   state.isPremium = !!profile?.is_premium;
@@ -1779,14 +2159,9 @@ async function enterApp() {
 
   supabase.channel('likes-you')
     .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'likes',
+      event: 'INSERT', schema: 'public', table: 'likes',
       filter: `likee_id=eq.${state.myId}`,
-    }, () => {
-      state.likesYouCount += 1;
-      updateLikesBanner();
-    })
+    }, () => { state.likesYouCount += 1; updateLikesBanner(); })
     .subscribe();
 
   showScreen('discover');
@@ -1802,12 +2177,8 @@ async function boot() {
   });
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    await enterApp();
-  } else {
-    showScreen('auth');
-    $('#bottomNav').classList.add('hidden');
-  }
+  if (session) await enterApp();
+  else { showScreen('auth'); $('#bottomNav').classList.add('hidden'); }
 }
 
 document.addEventListener('DOMContentLoaded', boot);
