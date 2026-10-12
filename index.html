@@ -43,9 +43,18 @@
 
   #app { position:relative; width:100%; max-width:480px; margin:0 auto; min-height:100dvh; background:#FAFAFA; overflow:hidden; box-shadow:0 0 60px -20px rgba(0,0,0,0.25); }
 
-  .screen { display:none; animation: screenIn 0.28s ease both; }
-  .screen.active { display:block; }
-  @keyframes screenIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform: translateY(0);} }
+  /* ---- Screens ----
+     IMPORTANT: do NOT animate `transform` on `.screen`.
+     A lingering `transform` on an ancestor turns `position: fixed`
+     children into descendants of that ancestor, collapsing overlays
+     like #screen-paywall and #screen-chat to 0 height.
+     We only animate opacity here. */
+  .screen { display: none; animation: screenIn 0.28s ease both; }
+  .screen.active { display: block; }
+  @keyframes screenIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
 
   .no-scrollbar::-webkit-scrollbar { display:none; }
   .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
@@ -1847,7 +1856,7 @@ async function doUnmatch() {
 }
 
 /* ============================================================
- * 19. PAYWALL — the working flow
+ * 19. PAYWALL — working flow
  * ========================================================== */
 function openPaywall() {
   renderPlans();
@@ -1886,20 +1895,15 @@ function renderPlans() {
   $('#payBtnLabel').textContent = `Pay ${plan.amount_etb.toLocaleString('en-US')} ETB with Tele Birr`;
 }
 
-/**
- * Persist premium to Supabase. Called after the payment is confirmed.
- * Uses RLS (users can update their own profile row) as a safety net
- * in case the server endpoint didn't save it.
- */
 async function unlockPremium() {
-  // ---- 1. Update in-memory state immediately (snappy UI) ----
+  // 1. In-memory state for instant UI
   state.isPremium = true;
   state.likes.isPremium = true;
   state.likes.used = 0;
   renderLikesMeter();
   updateLikesBanner();
 
-  // ---- 2. Persist to Supabase (belt-and-suspenders) ----
+  // 2. Persist to Supabase (RLS-safe: user can update their own row)
   try {
     const { error } = await supabase
       .from('profiles')
@@ -1923,18 +1927,12 @@ async function unlockPremium() {
     toast('Premium unlocked locally, but failed to save. Please refresh.');
   }
 
-  // ---- 3. Show the success modal ----
+  // 3. Success modal
   const modal = $('#premiumModal');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
 }
 
-/**
- * The full payment flow.
- *   1. Ask the server to create a pending subscription
- *   2. In live mode → redirect to Tele Birr
- *   3. In mock mode → confirm the payment, then unlock premium
- */
 async function payWithTelebirr() {
   const btn = $('#payBtn');
   const label = $('#payBtnLabel');
@@ -1944,7 +1942,7 @@ async function payWithTelebirr() {
   btn.classList.add('opacity-80');
 
   try {
-    // ---- Step 1: initiate the payment ----
+    // Step 1: initiate
     label.textContent = 'Connecting to Tele Birr…';
 
     const init = await api('/api/payments/telebirr/initiate', {
@@ -1956,14 +1954,14 @@ async function payWithTelebirr() {
       throw new Error('Payment server did not return a transaction id.');
     }
 
-    // ---- Step 2a: live mode → redirect to Tele Birr ----
+    // Step 2a: live mode → redirect
     if (init.mode === 'live' && init.checkout_url) {
       label.textContent = 'Redirecting to Tele Birr…';
       window.location.href = init.checkout_url;
       return;
     }
 
-    // ---- Step 2b: mock mode → simulate approval ----
+    // Step 2b: mock mode → simulate approval
     label.textContent = 'Waiting for approval…';
     await wait(1500);
 
@@ -1976,7 +1974,7 @@ async function payWithTelebirr() {
       throw new Error(confirm?.error || 'Payment was not confirmed.');
     }
 
-    // ---- Step 3: unlock ----
+    // Step 3: unlock
     await unlockPremium();
 
   } catch (err) {
@@ -1984,8 +1982,7 @@ async function payWithTelebirr() {
     const msg = err.data?.error || err.message || 'Payment could not be completed. Please try again.';
     toast(msg);
 
-    // If the server rejected mock (e.g. real Tele Birr configured), still
-    // unlock locally so the user isn't stuck. The webhook will catch up.
+    // If the server rejected mock (real Tele Birr configured), unlock locally
     if (err.status === 403 && !state.isPremium) {
       console.warn('[pay] Falling back to local unlock.');
       await unlockPremium();
@@ -2127,15 +2124,12 @@ function bindEvents() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
 
-    // Refresh Discover so the new counter state renders
     await loadDeck();
-
-    // Show Likes and force a re-fetch so the unlocked grid loads
     showScreen('likes');
     await renderLikes();
   });
 
-  // ---- Escape ----
+  // ---- Escape closes overlays in priority order ----
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (state.call) { endCall(false); return; }
