@@ -1,5 +1,6 @@
 /* ============================================================
  *  HEARTHSIDE — server.js
+ *  Node.js + Express API on top of Supabase
  * ============================================================ */
 
 require('dotenv').config();
@@ -34,7 +35,9 @@ const PLANS = {
 
 const app = express();
 
-/* -------------------- MIDDLEWARE -------------------- */
+/* ------------------------------------------------------------
+ * 1. MIDDLEWARE
+ * ---------------------------------------------------------- */
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
 
 app.use(
@@ -44,9 +47,13 @@ app.use(
 
 app.use(express.json({ limit: '2mb' }));
 
+/* Public config for the browser */
 app.get('/config.js', (_req, res) => {
   const url = process.env.SUPABASE_URL || '';
   const anon = process.env.SUPABASE_ANON_KEY || '';
+  if (!url || !anon) {
+    console.error('[config.js] SUPABASE_URL or SUPABASE_ANON_KEY is missing');
+  }
   res.type('application/javascript');
   res.set('Cache-Control', 'no-store');
   res.send(
@@ -58,7 +65,9 @@ app.get('/config.js', (_req, res) => {
 
 app.use(express.static(path.join(__dirname, '')));
 
-/* -------------------- SUPABASE -------------------- */
+/* ------------------------------------------------------------
+ * 2. SUPABASE CLIENTS
+ * ---------------------------------------------------------- */
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -70,7 +79,9 @@ function supabaseAsUser(token) {
   });
 }
 
-/* -------------------- HELPERS -------------------- */
+/* ------------------------------------------------------------
+ * 3. HELPERS
+ * ---------------------------------------------------------- */
 function haversineKm(lat1, lon1, lat2, lon2) {
   if ([lat1, lon1, lat2, lon2].some((v) => v === null || v === undefined)) return null;
   const R = 6371;
@@ -104,7 +115,9 @@ function sortPair(a, b) {
   return a < b ? [a, b] : [b, a];
 }
 
-/* -------------------- AUTH -------------------- */
+/* ------------------------------------------------------------
+ * 4. AUTH MIDDLEWARE
+ * ---------------------------------------------------------- */
 async function requireAuth(req, res, next) {
   try {
     const header = req.headers.authorization || '';
@@ -128,11 +141,11 @@ async function requireAuth(req, res, next) {
     next();
   } catch (err) {
     console.error('[requireAuth]', err);
-    res.status(500).json({ error: 'Authentication failed' });
+    res.status(500).json({ error: 'Authentication failed', detail: err.message });
   }
 }
 
-/** Ensures a profile row exists for the current user. Creates one if missing. */
+/** Ensure a profile row exists for the current user. Creates one if missing. */
 async function ensureProfile(req) {
   if (req.profile) return req.profile;
 
@@ -157,6 +170,7 @@ async function ensureProfile(req) {
     console.error('[ensureProfile] Insert failed:', error.message);
     throw new Error(`Could not create profile: ${error.message}`);
   }
+  req.profile = data;
   return data;
 }
 
@@ -175,14 +189,16 @@ async function refreshDailyLikes(profile) {
 }
 
 /* ============================================================
- *  ROUTES
+ * 5. ROUTES
  * ============================================================ */
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'hearthside-api', time: new Date().toISOString() });
 });
 
-/* -------------------- DISCOVER -------------------- */
+/* ------------------------------------------------------------
+ * GET /api/discover
+ * ---------------------------------------------------------- */
 app.get('/api/discover', requireAuth, async (req, res) => {
   try {
     const me = await refreshDailyLikes(await ensureProfile(req));
@@ -228,7 +244,9 @@ app.get('/api/discover', requireAuth, async (req, res) => {
   }
 });
 
-/* -------------------- LIKES -------------------- */
+/* ------------------------------------------------------------
+ * POST /api/likes
+ * ---------------------------------------------------------- */
 app.post('/api/likes', requireAuth, async (req, res) => {
   try {
     const me = await refreshDailyLikes(await ensureProfile(req));
@@ -314,7 +332,9 @@ app.post('/api/likes', requireAuth, async (req, res) => {
   }
 });
 
-/* -------------------- MATCHES -------------------- */
+/* ------------------------------------------------------------
+ * GET /api/matches
+ * ---------------------------------------------------------- */
 app.get('/api/matches', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
@@ -374,6 +394,9 @@ app.get('/api/matches', requireAuth, async (req, res) => {
   }
 });
 
+/* ------------------------------------------------------------
+ * DELETE /api/matches/:matchId
+ * ---------------------------------------------------------- */
 app.delete('/api/matches/:matchId', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
@@ -398,7 +421,9 @@ app.delete('/api/matches/:matchId', requireAuth, async (req, res) => {
   }
 });
 
-/* -------------------- MESSAGES -------------------- */
+/* ------------------------------------------------------------
+ * GET /api/messages/:matchId
+ * ---------------------------------------------------------- */
 app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
@@ -444,6 +469,9 @@ app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
   }
 });
 
+/* ------------------------------------------------------------
+ * POST /api/messages
+ * ---------------------------------------------------------- */
 app.post('/api/messages', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
@@ -482,7 +510,9 @@ app.post('/api/messages', requireAuth, async (req, res) => {
   }
 });
 
-/* -------------------- PREMIUM LIKES -------------------- */
+/* ------------------------------------------------------------
+ * GET /api/premium/likes
+ * ---------------------------------------------------------- */
 app.get('/api/premium/likes', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
@@ -560,9 +590,14 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
 });
 
 /* ============================================================
- *  PAYMENTS
+ * 6. PAYMENTS
  * ============================================================ */
 
+/* ------------------------------------------------------------
+ * POST /api/payments/telebirr/initiate
+ * Creates a pending subscription record. Never blocks the
+ * USSD flow even if the subscriptions table is missing.
+ * ---------------------------------------------------------- */
 app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
@@ -578,7 +613,6 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
     const plan = PLANS[plan_type];
     const txnId = `HS-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
-    // Try to record the pending subscription (non-fatal)
     let subscription = null;
     try {
       const { data, error } = await supabaseAdmin
@@ -602,21 +636,15 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
       console.warn('[initiate] subscriptions insert threw:', subErr.message);
     }
 
-    // MOCK MODE
-    if (!TELEBIRR_API_KEY) {
-      console.log(`[initiate] Mock payment created: ${txnId} for ${me.id}`);
-      return res.status(201).json({
-        mode: 'mock',
-        txn_id: txnId,
-        subscription,
-        plan: { plan_type, ...plan },
-        checkout_url: null,
-        message: 'Simulated checkout (mock mode).',
-      });
-    }
+    console.log(`[initiate] Pending USSD payment ${txnId} for ${me.id} (${plan_type})`);
 
-    // LIVE MODE — not used here
-    res.status(501).json({ error: 'Live mode not configured.' });
+    res.status(201).json({
+      mode: 'ussd',
+      txn_id: txnId,
+      subscription,
+      plan: { plan_type, ...plan },
+      message: 'Pending USSD payment.',
+    });
   } catch (err) {
     console.error('[POST /api/payments/telebirr/initiate]', err);
     res.status(500).json({
@@ -626,16 +654,43 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
   }
 });
 
+/* ------------------------------------------------------------
+ * POST /api/payments/mock-confirm
+ * Marks the user as premium. Used by the USSD "I've paid" flow.
+ * Only active when real Tele Birr credentials are NOT configured.
+ * ---------------------------------------------------------- */
 app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
   if (TELEBIRR_API_KEY) {
-    return res.status(403).json({ error: 'Mock confirmation is disabled (Tele Birr configured).' });
+    return res.status(403).json({
+      error: 'Manual confirmation is disabled because Tele Birr is configured.',
+    });
   }
 
   try {
     const me = await ensureProfile(req);
+    const { txn_id } = req.body || {};
+
     const startedAt = new Date();
     const expiresAt = new Date(startedAt.getTime() + 30 * 86400 * 1000);
 
+    // Best-effort subscription update
+    if (txn_id) {
+      try {
+        await supabaseAdmin
+          .from('subscriptions')
+          .update({
+            status: 'active',
+            started_at: startedAt.toISOString(),
+            expires_at: expiresAt.toISOString(),
+          })
+          .eq('telebirr_txn_id', txn_id)
+          .eq('user_id', me.id);
+      } catch (subErr) {
+        console.warn('[mock-confirm] subscriptions update failed (non-fatal):', subErr.message);
+      }
+    }
+
+    // Unlock premium
     const { data: profile, error: pErr } = await supabaseAdmin
       .from('profiles')
       .update({
@@ -649,19 +704,25 @@ app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
 
     if (pErr) throw pErr;
 
-    console.log(`[mock-confirm] Member+ activated for ${me.id}`);
+    console.log(`[mock-confirm] Member+ activated for ${me.id} (via USSD)`);
     res.json({ is_premium: true, profile });
   } catch (err) {
     console.error('[POST /api/payments/mock-confirm]', err);
-    res.status(500).json({ error: 'Mock confirmation failed', detail: err.message });
+    res.status(500).json({ error: 'Confirmation failed', detail: err.message });
   }
 });
 
-app.post('/api/payments/telebirr/webhook', async (req, res) => {
+/* ------------------------------------------------------------
+ * POST /api/payments/telebirr/webhook
+ * Placeholder — used by real H5 gateway if you migrate later.
+ * ---------------------------------------------------------- */
+app.post('/api/payments/telebirr/webhook', (req, res) => {
   res.json({ received: true });
 });
 
-/* -------------------- 404 + ERROR -------------------- */
+/* ------------------------------------------------------------
+ * 404 + ERROR HANDLERS
+ * ---------------------------------------------------------- */
 app.use((req, res) => {
   res.status(404).json({ error: `No route for ${req.method} ${req.path}` });
 });
@@ -671,12 +732,17 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error', detail: err.message });
 });
 
-/* -------------------- START -------------------- */
+/* ------------------------------------------------------------
+ * START
+ * ---------------------------------------------------------- */
 app.listen(PORT, () => {
   console.log(`\n  Hearthside API running on http://localhost:${PORT}`);
   console.log(`  Health check:  http://localhost:${PORT}/api/health`);
+  console.log(`  Config:        http://localhost:${PORT}/config.js`);
   console.log(`  Free like cap: ${FREE_LIKE_LIMIT}/day`);
-  console.log(`  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'MOCK (no API key set)'}\n`);
+  console.log(
+    `  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'USSD (manual confirmation)'}\n`
+  );
 });
 
 module.exports = app;
