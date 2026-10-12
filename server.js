@@ -25,10 +25,14 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 }
 
 const FREE_LIKE_LIMIT = parseInt(FREE_DAILY_LIKES, 10) || 8;
+
 const PLANS = {
   monthly: { amount_etb: 450, days: 30, label: 'Member+ Monthly' },
   yearly:  { amount_etb: 4500, days: 365, label: 'Member+ Yearly' },
 };
+
+const FREE_MAX_KM = 100;    // free users' max distance
+const PREMIUM_MAX_KM = 500; // premium users' max distance
 
 const app = express();
 
@@ -49,7 +53,7 @@ app.get('/config.js', (_req, res) => {
   );
 });
 
-app.use(express.static(path.join(__dirname, '')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 /* -------------------- SUPABASE -------------------- */
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -108,8 +112,6 @@ async function requireAuth(req, res, next) {
 
 async function ensureProfile(req) {
   if (req.profile) return req.profile;
-  console.warn(`[ensureProfile] Creating profile for ${req.user.id}`);
-
   const { data, error } = await supabaseAdmin
     .from('profiles')
     .insert({
@@ -122,9 +124,7 @@ async function ensureProfile(req) {
       daily_likes_used: 0,
       last_like_reset: new Date().toISOString(),
     })
-    .select('*')
-    .single();
-
+    .select('*').single();
   if (error) throw new Error(`Could not create profile: ${error.message}`);
   req.profile = data;
   return data;
@@ -152,7 +152,6 @@ app.get('/api/health', (_req, res) => {
 
 /* -------------------- PROFILE -------------------- */
 
-/** GET /api/profiles/me — the current user's full profile. */
 app.get('/api/profiles/me', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
@@ -163,12 +162,10 @@ app.get('/api/profiles/me', requireAuth, async (req, res) => {
   }
 });
 
-/** PUT /api/profiles/me — update the current user's editable fields. */
 app.put('/api/profiles/me', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
     const { name, age, gender, city, bio, tags, avatar_url, latitude, longitude } = req.body || {};
-
     const patch = {};
 
     if (typeof name === 'string') {
@@ -176,7 +173,6 @@ app.put('/api/profiles/me', requireAuth, async (req, res) => {
       if (!trimmed) return res.status(400).json({ error: 'Name cannot be empty' });
       patch.name = trimmed;
     }
-
     if (age !== undefined && age !== null && age !== '') {
       const n = parseInt(age, 10);
       if (Number.isNaN(n) || n < 18 || n > 120) {
@@ -184,7 +180,6 @@ app.put('/api/profiles/me', requireAuth, async (req, res) => {
       }
       patch.age = n;
     }
-
     if (typeof gender === 'string') {
       const g = gender.trim().toLowerCase();
       if (!['woman', 'man', 'non-binary', 'other'].includes(g)) {
@@ -192,18 +187,11 @@ app.put('/api/profiles/me', requireAuth, async (req, res) => {
       }
       patch.gender = g;
     }
-
     if (typeof city === 'string') patch.city = city.trim().slice(0, 80);
     if (typeof bio === 'string') patch.bio = bio.trim().slice(0, 500);
-
     if (Array.isArray(tags)) {
-      patch.tags = tags
-        .map((t) => String(t).trim())
-        .filter(Boolean)
-        .slice(0, 8)
-        .map((t) => t.slice(0, 24));
+      patch.tags = tags.map((t) => String(t).trim()).filter(Boolean).slice(0, 8).map((t) => t.slice(0, 24));
     }
-
     if (typeof avatar_url === 'string') {
       const url = avatar_url.trim();
       if (url && !/^https?:\/\//i.test(url) && !url.startsWith('data:image/')) {
@@ -211,24 +199,15 @@ app.put('/api/profiles/me', requireAuth, async (req, res) => {
       }
       patch.avatar_url = url || null;
     }
-
     if (typeof latitude === 'number' && latitude >= -90 && latitude <= 90) patch.latitude = latitude;
     if (typeof longitude === 'number' && longitude >= -180 && longitude <= 180) patch.longitude = longitude;
 
-    if (!Object.keys(patch).length) {
-      return res.status(400).json({ error: 'No editable fields provided' });
-    }
+    if (!Object.keys(patch).length) return res.status(400).json({ error: 'No editable fields provided' });
 
     const { data: updated, error } = await supabaseAdmin
-      .from('profiles')
-      .update(patch)
-      .eq('id', me.id)
-      .select('*')
-      .single();
-
+      .from('profiles').update(patch).eq('id', me.id).select('*').single();
     if (error) throw error;
 
-    console.log(`[PUT /api/profiles/me] Updated ${me.id}: ${Object.keys(patch).join(', ')}`);
     res.json({ profile: updated });
   } catch (err) {
     console.error('[PUT /api/profiles/me]', err);
@@ -236,14 +215,24 @@ app.put('/api/profiles/me', requireAuth, async (req, res) => {
   }
 });
 
-/* -------------------- DISCOVER -------------------- */
+/* -------------------- DISCOVER (WITH FILTERS) -------------------- */
+
+/**
+ * GET /api/discover
+ * Query params:
+ *   lat, lng          — user's coordinates (falls back to profile)
+ *   max_km            — distance filter (1–500 for premium, capped 100 for free)
+ *   min_age, max_age  — age range          (premium only)
+ *   gender            — 'woman'|'man'|'non-binary'|'any'  (premium only)
+ *   tags              — comma-separated interests         (premium only)
+ *   limit             — how many to return (max 100)
+ */
 app.get('/api/discover', requireAuth, async (req, res) => {
   try {
     const me = await refreshDailyLikes(await ensureProfile(req));
+
     const lat = parseFloat(req.query.lat ?? me.latitude);
     const lng = parseFloat(req.query.lng ?? me.longitude);
-    const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
-    const maxKm = parseFloat(req.query.max_km) || 100;
 
     if (Number.isNaN(lat) || Number.isNaN(lng)) {
       return res.status(400).json({
@@ -251,13 +240,71 @@ app.get('/api/discover', requireAuth, async (req, res) => {
       });
     }
 
+    // ---- Parse filters ----
+    const requestedMaxKm = Math.min(
+      Math.max(parseFloat(req.query.max_km) || FREE_MAX_KM, 1),
+      PREMIUM_MAX_KM
+    );
+
+    // Free users capped at FREE_MAX_KM; premium gets their chosen value
+    const maxKm = me.is_premium ? requestedMaxKm : Math.min(requestedMaxKm, FREE_MAX_KM);
+
+    // Age / gender / tags only apply to premium users
+    let minAge = null, maxAge = null, genderPref = null, tagList = [];
+    const filtersIgnored = [];
+
+    if (me.is_premium) {
+      const rawMin = parseInt(req.query.min_age, 10);
+      const rawMax = parseInt(req.query.max_age, 10);
+      if (!Number.isNaN(rawMin) && rawMin >= 18 && rawMin <= 120) minAge = rawMin;
+      if (!Number.isNaN(rawMax) && rawMax >= 18 && rawMax <= 120) maxAge = rawMax;
+      if (minAge !== null && maxAge !== null && minAge > maxAge) {
+        [minAge, maxAge] = [maxAge, minAge]; // swap if reversed
+      }
+
+      if (typeof req.query.gender === 'string' && req.query.gender !== 'any') {
+        const g = req.query.gender.trim().toLowerCase();
+        if (['woman', 'man', 'non-binary', 'other'].includes(g)) genderPref = g;
+      }
+
+      if (typeof req.query.tags === 'string' && req.query.tags.trim()) {
+        tagList = req.query.tags.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean).slice(0, 8);
+      }
+    } else {
+      if (req.query.min_age || req.query.max_age) filtersIgnored.push('age');
+      if (req.query.gender && req.query.gender !== 'any') filtersIgnored.push('gender');
+      if (req.query.tags) filtersIgnored.push('tags');
+    }
+
+    const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
+
+    // Over-fetch from the RPC so post-filters have enough to work with
+    const rpcLimit = Math.min(limit * 4, 300);
+
     const userClient = supabaseAsUser(req.token);
     const { data, error } = await userClient.rpc('get_nearby_profiles', {
-      p_lat: lat, p_lng: lng, p_limit: limit, p_max_km: maxKm,
+      p_lat: lat,
+      p_lng: lng,
+      p_limit: rpcLimit,
+      p_max_km: maxKm,
     });
     if (error) throw error;
 
-    const profiles = (data || []).map((p) => ({
+    // ---- Apply post-filters ----
+    let profiles = (data || []).filter((p) => {
+      if (minAge !== null && (p.age == null || p.age < minAge)) return false;
+      if (maxAge !== null && (p.age == null || p.age > maxAge)) return false;
+      if (genderPref && p.gender !== genderPref) return false;
+      if (tagList.length) {
+        const theirTags = (p.tags || []).map((t) => String(t).toLowerCase());
+        const overlap = theirTags.some((t) => tagList.includes(t));
+        if (!overlap) return false;
+      }
+      return true;
+    });
+
+    // Slice to the requested limit
+    profiles = profiles.slice(0, limit).map((p) => ({
       ...p,
       distance_km: p.distance_km !== null ? Number(p.distance_km.toFixed(2)) : null,
       distance_label: formatDistance(p.distance_km),
@@ -265,6 +312,21 @@ app.get('/api/discover', requireAuth, async (req, res) => {
 
     res.json({
       profiles,
+      filters: {
+        applied: {
+          max_km: maxKm,
+          min_age: minAge,
+          max_age: maxAge,
+          gender: genderPref || 'any',
+          tags: tagList,
+        },
+        limits: {
+          max_km: me.is_premium ? PREMIUM_MAX_KM : FREE_MAX_KM,
+          free_max_km: FREE_MAX_KM,
+          premium_max_km: PREMIUM_MAX_KM,
+        },
+        ignored: filtersIgnored,
+      },
       likes: {
         used: me.daily_likes_used,
         limit: me.is_premium ? null : FREE_LIKE_LIMIT,
@@ -304,8 +366,7 @@ app.post('/api/likes', requireAuth, async (req, res) => {
     let updatedProfile = me;
     if (is_like === true) {
       const { data } = await supabaseAdmin
-        .from('profiles')
-        .update({ daily_likes_used: me.daily_likes_used + 1 })
+        .from('profiles').update({ daily_likes_used: me.daily_likes_used + 1 })
         .eq('id', me.id).select('*').single();
       if (data) updatedProfile = data;
     }
@@ -472,7 +533,6 @@ app.post('/api/messages', requireAuth, async (req, res) => {
         media_url,
       })
       .select('*').single();
-
     if (error) throw error;
     res.status(201).json({ message });
   } catch (err) {
@@ -549,7 +609,6 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
     if (!PLANS[plan_type]) {
       return res.status(400).json({ error: "plan_type must be 'monthly' or 'yearly'", plans: PLANS });
     }
-
     const plan = PLANS[plan_type];
     const txnId = `HS-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
@@ -564,9 +623,7 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
         }).select('*').single();
       if (error) console.warn('[initiate] subscriptions insert failed:', error.message);
       else subscription = data;
-    } catch (subErr) {
-      console.warn('[initiate] subscriptions insert threw:', subErr.message);
-    }
+    } catch (subErr) { console.warn('[initiate] subscriptions insert threw:', subErr.message); }
 
     console.log(`[initiate] Pending USSD payment ${txnId} for ${me.id} (${plan_type})`);
     res.status(201).json({
@@ -612,7 +669,7 @@ app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
       .eq('id', me.id).select('*').single();
     if (pErr) throw pErr;
 
-    console.log(`[mock-confirm] Member+ activated for ${me.id} (via USSD)`);
+    console.log(`[mock-confirm] Member+ activated for ${me.id}`);
     res.json({ is_premium: true, profile });
   } catch (err) {
     console.error('[POST /api/payments/mock-confirm]', err);
@@ -639,6 +696,7 @@ app.listen(PORT, () => {
   console.log(`\n  Hearthside API running on http://localhost:${PORT}`);
   console.log(`  Health check:  http://localhost:${PORT}/api/health`);
   console.log(`  Free like cap: ${FREE_LIKE_LIMIT}/day`);
+  console.log(`  Distance cap:  ${FREE_MAX_KM}km free · ${PREMIUM_MAX_KM}km premium`);
   console.log(`  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'USSD (manual confirmation)'}\n`);
 });
 
