@@ -1,409 +1,915 @@
+/* ============================================================
+ *  HEARTHSIDE — server.js
+ *  Node.js + Express API on top of Supabase
+ * ============================================================
+ *  Run:  npm install && npm run dev
+ * ============================================================ */
+
+require('dotenv').config();
+
 const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const path = require('path');
-const session = require('express-session');
-const bcrypt = require('bcrypt');
-const fs = require('fs-extra');
-const { v4: uuidv4 } = require('uuid');
+const cors = require('cors');
+const crypto = require('crypto');
+const { createClient } = require('@supabase/supabase-js');
+
+/* ------------------------------------------------------------
+ * 0. CONFIG
+ * ---------------------------------------------------------- */
+const {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY,
+  TELEBIRR_API_KEY,
+  TELEBIRR_MERCHANT_ID,
+  PORT = 3000,
+  FREE_DAILY_LIKES = '8',
+} = process.env;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error(
+    '\n[FATAL] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.\n' +
+    'Copy .env.example to .env and fill in your Supabase credentials.\n'
+  );
+  process.exit(1);
+}
+
+const FREE_LIKE_LIMIT = parseInt(FREE_DAILY_LIKES, 10) || 8;
+
+const PLANS = {
+  monthly: { amount_etb: 450, days: 30, label: 'Member+ Monthly' },
+  yearly:  { amount_etb: 4500, days: 365, label: 'Member+ Yearly' },
+};
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
-const db = require("./db");
 
+/* ------------------------------------------------------------
+ * 1. MIDDLEWARE
+ * ---------------------------------------------------------- */
 
+// CORS — tighten `origin` in production
+app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
 
-// Create user
-app.post("/register", (req, res) => {
-  const { username, balance } = req.body;
+// Tele Birr webhook needs the raw body for signature verification,
+// so it must be mounted BEFORE express.json().
+app.use(
+  '/api/payments/telebirr/webhook',
+  express.raw({ type: '*/*', limit: '1mb' })
+);
 
-  db.query(
-    "INSERT INTO users (username, balance) VALUES (?, ?)",
-    [username, balance],
-    (err, result) => {
-      if (err) return res.status(500).send(err);
-      res.send("User created");
+app.use(express.json({ limit: '2mb' }));
+
+/* ------------------------------------------------------------
+ * 2. SUPABASE CLIENTS
+ * ---------------------------------------------------------- */
+
+// Admin client — bypasses RLS. NEVER expose this key to the browser.
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+// Build a client that acts *as* the requesting user so that
+// Postgres functions using auth.uid() (e.g. get_nearby_profiles) work.
+function supabaseAsUser(token) {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+}
+
+/* ------------------------------------------------------------
+ * 3. HELPERS
+ * ---------------------------------------------------------- */
+
+/**
+ * Haversine great-circle distance in kilometres.
+ * (Mirrors public.haversine_km() in schema.sql so the API can
+ *  compute distances without a round-trip when needed.)
+ */
+function haversineKm(lat1, lon1, lat2, lon2) {
+  if ([lat1, lon1, lat2, lon2].some((v) => v === null || v === undefined)) {
+    return null;
+  }
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function formatDistance(km) {
+  if (km === null || km === undefined) return null;
+  if (km < 1) return 'less than 1 km away';
+  return `${Math.round(km)} km away`;
+}
+
+/** True when two timestamps fall on different UTC calendar days. */
+function isNewDay(lastReset) {
+  if (!lastReset) return true;
+  const a = new Date(lastReset);
+  const b = new Date();
+  return (
+    a.getUTCFullYear() !== b.getUTCFullYear() ||
+    a.getUTCMonth() !== b.getUTCMonth() ||
+    a.getUTCDate() !== b.getUTCDate()
+  );
+}
+
+/** Normalise a (user1,user2) pair so it is order-independent. */
+function sortPair(a, b) {
+  return a < b ? [a, b] : [b, a];
+}
+
+/* ------------------------------------------------------------
+ * 4. AUTH MIDDLEWARE
+ * ---------------------------------------------------------- */
+
+async function requireAuth(req, res, next) {
+  try {
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Missing bearer token' });
     }
+
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !data?.user) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    const { data: profile, error: pErr } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    if (pErr) throw pErr;
+
+    req.token = token;
+    req.user = data.user;
+    req.profile = profile || null;
+    next();
+  } catch (err) {
+    console.error('[requireAuth]', err);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+}
+
+/**
+ * Rolls the daily like counter forward if the UTC day changed.
+ * Returns the up-to-date profile row.
+ */
+async function refreshDailyLikes(profile) {
+  if (!profile) return profile;
+  if (isNewDay(profile.last_like_reset)) {
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .update({ daily_likes_used: 0, last_like_reset: new Date().toISOString() })
+      .eq('id', profile.id)
+      .select('*')
+      .single();
+    return data || { ...profile, daily_likes_used: 0 };
+  }
+  return profile;
+}
+
+/* ============================================================
+ * 5. ROUTES
+ * ============================================================ */
+
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, service: 'hearthside-api', time: new Date().toISOString() });
+});
+
+/* ------------------------------------------------------------
+ * GET /api/discover
+ * Profiles the user has not liked/passed, sorted by proximity.
+ * Query: ?lat=9.03&lng=38.74&limit=30&max_km=100
+ * ---------------------------------------------------------- */
+app.get('/api/discover', requireAuth, async (req, res) => {
+  try {
+    const me = await refreshDailyLikes(req.profile);
+    if (!me) return res.status(404).json({ error: 'Profile not found' });
+
+    const lat = parseFloat(req.query.lat ?? me.latitude);
+    const lng = parseFloat(req.query.lng ?? me.longitude);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
+    const maxKm = parseFloat(req.query.max_km) || 100;
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(400).json({
+        error: 'Location required. Send ?lat=&lng= or set latitude/longitude on your profile.',
+      });
+    }
+
+    // Use the user-scoped client so auth.uid() resolves inside the RPC.
+    const userClient = supabaseAsUser(req.token);
+    const { data, error } = await userClient.rpc('get_nearby_profiles', {
+      p_lat: lat,
+      p_lng: lng,
+      p_limit: limit,
+      p_max_km: maxKm,
+    });
+
+    if (error) throw error;
+
+    const profiles = (data || []).map((p) => ({
+      ...p,
+      distance_km: p.distance_km !== null ? Number(p.distance_km.toFixed(2)) : null,
+      distance_label: formatDistance(p.distance_km),
+    }));
+
+    res.json({
+      profiles,
+      likes: {
+        used: me.daily_likes_used,
+        limit: me.is_premium ? null : FREE_LIKE_LIMIT,
+        remaining: me.is_premium
+          ? null
+          : Math.max(0, FREE_LIKE_LIMIT - me.daily_likes_used),
+        is_premium: me.is_premium,
+      },
+    });
+  } catch (err) {
+    console.error('[GET /api/discover]', err);
+    res.status(500).json({ error: 'Failed to load discovery feed' });
+  }
+});
+
+/* ------------------------------------------------------------
+ * POST /api/likes
+ * Body: { likee_id: uuid, is_like: boolean }
+ * Enforces the free daily like limit and creates a match on
+ * a mutual like.
+ * ---------------------------------------------------------- */
+app.post('/api/likes', requireAuth, async (req, res) => {
+  try {
+    const { likee_id, is_like = true } = req.body || {};
+    const me = await refreshDailyLikes(req.profile);
+
+    if (!me) return res.status(404).json({ error: 'Profile not found' });
+    if (!likee_id) return res.status(400).json({ error: 'likee_id is required' });
+    if (likee_id === me.id) {
+      return res.status(400).json({ error: 'You cannot like yourself' });
+    }
+
+    // ---- Daily limit (likes only, passes are always free) ----
+    if (is_like === true && !me.is_premium) {
+      if (me.daily_likes_used >= FREE_LIKE_LIMIT) {
+        return res.status(429).json({
+          error: 'Daily like limit reached',
+          code: 'LIKE_LIMIT_REACHED',
+          likes: {
+            used: me.daily_likes_used,
+            limit: FREE_LIKE_LIMIT,
+            remaining: 0,
+            is_premium: false,
+          },
+        });
+      }
+    }
+
+    // ---- Upsert the like/pass ----
+    const { data: likeRow, error: likeErr } = await supabaseAdmin
+      .from('likes')
+      .upsert(
+        { liker_id: me.id, likee_id, is_like },
+        { onConflict: 'liker_id,likee_id' }
+      )
+      .select('*')
+      .single();
+
+    if (likeErr) throw likeErr;
+
+    // ---- Increment the counter for real likes ----
+    let updatedProfile = me;
+    if (is_like === true) {
+      const { data } = await supabaseAdmin
+        .from('profiles')
+        .update({ daily_likes_used: me.daily_likes_used + 1 })
+        .eq('id', me.id)
+        .select('*')
+        .single();
+      if (data) updatedProfile = data;
+    }
+
+    const likesMeta = {
+      used: updatedProfile.daily_likes_used,
+      limit: updatedProfile.is_premium ? null : FREE_LIKE_LIMIT,
+      remaining: updatedProfile.is_premium
+        ? null
+        : Math.max(0, FREE_LIKE_LIMIT - updatedProfile.daily_likes_used),
+      is_premium: updatedProfile.is_premium,
+    };
+
+    // ---- Pass: nothing else to do ----
+    if (is_like !== true) {
+      return res.json({ matched: false, like: likeRow, likes: likesMeta });
+    }
+
+    // ---- Mutual like? ----
+    const { data: reciprocal, error: recErr } = await supabaseAdmin
+      .from('likes')
+      .select('id')
+      .eq('liker_id', likee_id)
+      .eq('likee_id', me.id)
+      .eq('is_like', true)
+      .maybeSingle();
+
+    if (recErr) throw recErr;
+
+    if (!reciprocal) {
+      return res.json({ matched: false, like: likeRow, likes: likesMeta });
+    }
+
+    // ---- Create the match (idempotent) ----
+    const [u1, u2] = sortPair(me.id, likee_id);
+
+    const { data: existing } = await supabaseAdmin
+      .from('matches')
+      .select('*')
+      .eq('user1_id', u1)
+      .eq('user2_id', u2)
+      .maybeSingle();
+
+    let match = existing;
+
+    if (!match) {
+      const { data: created, error: mErr } = await supabaseAdmin
+        .from('matches')
+        .insert({ user1_id: u1, user2_id: u2 })
+        .select('*')
+        .single();
+      if (mErr) throw mErr;
+      match = created;
+    }
+
+    const { data: other } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, age, city, avatar_url, tags, bio')
+      .eq('id', likee_id)
+      .single();
+
+    res.status(201).json({
+      matched: true,
+      match,
+      partner: other,
+      like: likeRow,
+      likes: likesMeta,
+    });
+  } catch (err) {
+    console.error('[POST /api/likes]', err);
+    res.status(500).json({ error: 'Failed to record like' });
+  }
+});
+
+/* ------------------------------------------------------------
+ * GET /api/matches
+ * All mutual matches with the partner's profile + last message.
+ * ---------------------------------------------------------- */
+app.get('/api/matches', requireAuth, async (req, res) => {
+  try {
+    const me = req.profile;
+    if (!me) return res.status(404).json({ error: 'Profile not found' });
+
+    const { data: rows, error } = await supabaseAdmin
+      .from('matches')
+      .select('*')
+      .or(`user1_id.eq.${me.id},user2_id.eq.${me.id}`)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    if (!rows?.length) return res.json({ matches: [] });
+
+    const partnerIds = rows.map((m) =>
+      m.user1_id === me.id ? m.user2_id : m.user1_id
+    );
+
+    const { data: partners, error: pErr } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, age, city, avatar_url, bio, tags, is_premium')
+      .in('id', partnerIds);
+    if (pErr) throw pErr;
+
+    const partnerMap = Object.fromEntries((partners || []).map((p) => [p.id, p]));
+
+    // Latest message per match
+    const matchIds = rows.map((m) => m.id);
+    const { data: msgs } = await supabaseAdmin
+      .from('messages')
+      .select('id, match_id, sender_id, content, media_url, is_read, created_at')
+      .in('match_id', matchIds)
+      .order('created_at', { ascending: false });
+
+    const lastByMatch = {};
+    const unreadByMatch = {};
+    for (const m of msgs || []) {
+      if (!lastByMatch[m.match_id]) lastByMatch[m.match_id] = m;
+      if (m.sender_id !== me.id && !m.is_read) {
+        unreadByMatch[m.match_id] = (unreadByMatch[m.match_id] || 0) + 1;
+      }
+    }
+
+    const matches = rows
+      .map((m) => {
+        const partnerId = m.user1_id === me.id ? m.user2_id : m.user1_id;
+        const partner = partnerMap[partnerId];
+        if (!partner) return null;
+        return {
+          id: m.id,
+          created_at: m.created_at,
+          partner,
+          last_message: lastByMatch[m.id] || null,
+          unread_count: unreadByMatch[m.id] || 0,
+        };
+      })
+      .filter(Boolean);
+
+    res.json({ matches });
+  } catch (err) {
+    console.error('[GET /api/matches]', err);
+    res.status(500).json({ error: 'Failed to load matches' });
+  }
+});
+
+/* ------------------------------------------------------------
+ * GET /api/messages/:matchId
+ * Chat history for a match the user belongs to.
+ * ---------------------------------------------------------- */
+app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
+  try {
+    const me = req.profile;
+    const { matchId } = req.params;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+
+    const { data: match, error: mErr } = await supabaseAdmin
+      .from('matches')
+      .select('*')
+      .eq('id', matchId)
+      .maybeSingle();
+
+    if (mErr) throw mErr;
+    if (!match) return res.status(404).json({ error: 'Match not found' });
+
+    if (match.user1_id !== me.id && match.user2_id !== me.id) {
+      return res.status(403).json({ error: 'Not a participant of this match' });
+    }
+
+    const { data: messages, error } = await supabaseAdmin
+      .from('messages')
+      .select('*')
+      .eq('match_id', matchId)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+
+    if (error) throw error;
+
+    // Mark the partner's messages as read
+    await supabaseAdmin
+      .from('messages')
+      .update({ is_read: true })
+      .eq('match_id', matchId)
+      .neq('sender_id', me.id)
+      .eq('is_read', false);
+
+    const partnerId = match.user1_id === me.id ? match.user2_id : match.user1_id;
+    const { data: partner } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, age, city, avatar_url, bio, tags')
+      .eq('id', partnerId)
+      .single();
+
+    res.json({ match, partner, messages: messages || [] });
+  } catch (err) {
+    console.error('[GET /api/messages]', err);
+    res.status(500).json({ error: 'Failed to load messages' });
+  }
+});
+
+/* ------------------------------------------------------------
+ * POST /api/messages
+ * Body: { match_id, content?, media_url? }
+ * ---------------------------------------------------------- */
+app.post('/api/messages', requireAuth, async (req, res) => {
+  try {
+    const me = req.profile;
+    const { match_id, content = null, media_url = null } = req.body || {};
+
+    if (!match_id) return res.status(400).json({ error: 'match_id is required' });
+    if (!content && !media_url) {
+      return res.status(400).json({ error: 'Provide content or media_url' });
+    }
+
+    const { data: match, error: mErr } = await supabaseAdmin
+      .from('matches')
+      .select('id, user1_id, user2_id')
+      .eq('id', match_id)
+      .maybeSingle();
+
+    if (mErr) throw mErr;
+    if (!match) return res.status(404).json({ error: 'Match not found' });
+    if (match.user1_id !== me.id && match.user2_id !== me.id) {
+      return res.status(403).json({ error: 'Not a participant of this match' });
+    }
+
+    const { data: message, error } = await supabaseAdmin
+      .from('messages')
+      .insert({
+        match_id,
+        sender_id: me.id,
+        content: content ? String(content).slice(0, 4000) : null,
+        media_url,
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    res.status(201).json({ message });
+  } catch (err) {
+    console.error('[POST /api/messages]', err);
+    res.status(500).json({ error: 'Failed to send message' });
+  }
+});
+
+/* ------------------------------------------------------------
+ * GET /api/premium/likes
+ * People who liked the current user — premium gated.
+ * Free users receive a locked preview (blurred identities).
+ * ---------------------------------------------------------- */
+app.get('/api/premium/likes', requireAuth, async (req, res) => {
+  try {
+    const me = req.profile;
+    if (!me) return res.status(404).json({ error: 'Profile not found' });
+
+    const { data: rows, error } = await supabaseAdmin
+      .from('likes')
+      .select('id, liker_id, created_at')
+      .eq('likee_id', me.id)
+      .eq('is_like', true)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const likerIds = (rows || []).map((r) => r.liker_id);
+    const total = likerIds.length;
+
+    if (!likerIds.length) {
+      return res.json({ is_premium: me.is_premium, total: 0, likes: [] });
+    }
+
+    // Which of these already became matches?
+    const { data: myMatches } = await supabaseAdmin
+      .from('matches')
+      .select('user1_id, user2_id')
+      .or(`user1_id.eq.${me.id},user2_id.eq.${me.id}`);
+
+    const matchedIds = new Set(
+      (myMatches || []).map((m) => (m.user1_id === me.id ? m.user2_id : m.user1_id))
+    );
+
+    const { data: profiles, error: pErr } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, age, city, avatar_url, bio, tags')
+      .in('id', likerIds);
+    if (pErr) throw pErr;
+
+    const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
+
+    // ---- Premium: full identities ----
+    if (me.is_premium) {
+      const likes = rows
+        .map((r) => {
+          const p = profileMap[r.liker_id];
+          if (!p) return null;
+          return {
+            like_id: r.id,
+            liked_at: r.created_at,
+            already_matched: matchedIds.has(r.liker_id),
+            profile: p,
+          };
+        })
+        .filter(Boolean);
+
+      return res.json({ is_premium: true, total, likes });
+    }
+
+    // ---- Free: locked preview (no names, blurred avatars) ----
+    const preview = rows.slice(0, 12).map((r) => {
+      const p = profileMap[r.liker_id] || {};
+      return {
+        like_id: r.id,
+        liked_at: r.created_at,
+        locked: true,
+        teaser: {
+          first_name_initial: (p.name || '?').trim().charAt(0).toUpperCase(),
+          age: p.age ?? null,
+          city: p.city || null,
+          avatar_url: p.avatar_url || null,
+        },
+      };
+    });
+
+    res.status(200).json({
+      is_premium: false,
+      total,
+      likes: preview,
+      upgrade: {
+        code: 'PREMIUM_REQUIRED',
+        message: 'Upgrade to Member+ to see everyone who liked you.',
+        plans: PLANS,
+      },
+    });
+  } catch (err) {
+    console.error('[GET /api/premium/likes]', err);
+    res.status(500).json({ error: 'Failed to load likes' });
+  }
+});
+
+/* ------------------------------------------------------------
+ * POST /api/payments/telebirr/initiate
+ * Body: { plan_type: 'monthly' | 'yearly' }
+ *
+ * NOTE: Real Tele Birr H5/App payment requires merchant
+ * credentials + RSA signing of the payload. This endpoint
+ * creates the pending subscription record and, when
+ * TELEBIRR_API_KEY is present, forwards the request. Without
+ * credentials it returns a MOCK checkout so the UI flow works.
+ * ---------------------------------------------------------- */
+app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
+  try {
+    const me = req.profile;
+    const { plan_type } = req.body || {};
+
+    if (!PLANS[plan_type]) {
+      return res.status(400).json({
+        error: "plan_type must be 'monthly' or 'yearly'",
+        plans: PLANS,
+      });
+    }
+
+    const plan = PLANS[plan_type];
+    const txnId = `HS-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+    const { data: subscription, error } = await supabaseAdmin
+      .from('subscriptions')
+      .insert({
+        user_id: me.id,
+        plan_type,
+        amount_etb: plan.amount_etb,
+        status: 'pending',
+        telebirr_txn_id: txnId,
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    // ---- MOCK MODE (no merchant credentials configured) ----
+    if (!TELEBIRR_API_KEY) {
+      console.warn('[telebirr] TELEBIRR_API_KEY not set — returning mock checkout.');
+      return res.status(201).json({
+        mode: 'mock',
+        txn_id: txnId,
+        subscription,
+        plan: { plan_type, ...plan },
+        checkout_url: `/paywall.html?mock_checkout=${txnId}`,
+        message:
+          'Tele Birr credentials are not configured. This is a simulated checkout.',
+      });
+    }
+
+    // ---- LIVE MODE (placeholder — plug in real Tele Birr API) ----
+    // Tele Birr expects: appId, shortCode/merchantId, nonce, timestamp,
+    // and an RSA-signed `sign` field over the sorted payload.
+    const payload = {
+      appId: TELEBIRR_MERCHANT_ID,
+      outTradeNo: txnId,
+      totalAmount: plan.amount_etb.toFixed(2),
+      subject: plan.label,
+      notifyUrl: `${process.env.PUBLIC_BASE_URL || ''}/api/payments/telebirr/webhook`,
+      returnUrl: `${process.env.PUBLIC_BASE_URL || ''}/paywall.html?txn=${txnId}`,
+      timeoutExpress: '30m',
+      nonce: crypto.randomBytes(16).toString('hex'),
+      timestamp: Date.now().toString(),
+    };
+
+    const telebirrRes = await fetch(
+      process.env.TELEBIRR_BASE_URL ||
+        'https://api.ethiotelecom.et/tele-birr/payment/v1/order',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TELEBIRR_API_KEY}`,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const telebirrData = await telebirrRes.json().catch(() => ({}));
+
+    if (!telebirrRes.ok) {
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({ status: 'failed' })
+        .eq('id', subscription.id);
+      return res.status(502).json({
+        error: 'Tele Birr order creation failed',
+        detail: telebirrData,
+      });
+    }
+
+    res.status(201).json({
+      mode: 'live',
+      txn_id: txnId,
+      subscription,
+      plan: { plan_type, ...plan },
+      checkout_url: telebirrData?.data?.toPayUrl || telebirrData?.toPayUrl || null,
+    });
+  } catch (err) {
+    console.error('[POST /api/payments/telebirr/initiate]', err);
+    res.status(500).json({ error: 'Failed to initiate payment' });
+  }
+});
+
+/* ------------------------------------------------------------
+ * POST /api/payments/telebirr/webhook
+ * Tele Birr calls this on payment success/failure.
+ * Body (JSON): { outTradeNo | txn_id, status, tradeNo, paidAt }
+ *
+ * This route receives a RAW body (see middleware order above)
+ * so we can verify the signature before trusting the payload.
+ * ---------------------------------------------------------- */
+app.post('/api/payments/telebirr/webhook', async (req, res) => {
+  try {
+    // ---- 1. Parse raw body ----
+    let body = {};
+    const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
+    if (raw) {
+      try {
+        body = JSON.parse(raw);
+      } catch {
+        body = Object.fromEntries(new URLSearchParams(raw));
+      }
+    } else if (req.body && typeof req.body === 'object') {
+      body = req.body;
+    }
+
+    // ---- 2. Verify signature (when a key is configured) ----
+    const signature = req.headers['x-telebirr-signature'] || body.sign;
+    if (TELEBIRR_API_KEY && signature) {
+      const expected = crypto
+        .createHmac('sha256', TELEBIRR_API_KEY)
+        .update(raw || JSON.stringify(body))
+        .digest('hex');
+      if (expected !== signature) {
+        console.warn('[webhook] Signature mismatch — rejecting.');
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+    }
+
+    const txnId =
+      body.outTradeNo || body.txn_id || body.merchantOrderId || body.tradeNo;
+    const rawStatus = String(body.status || body.tradeStatus || '').toLowerCase();
+
+    if (!txnId) {
+      return res.status(400).json({ error: 'Missing transaction reference' });
+    }
+
+    const succeeded = ['success', 'successful', 'paid', 'completed', '0000', '2'].includes(
+      rawStatus
+    );
+
+    // ---- 3. Load the pending subscription ----
+    const { data: sub, error: subErr } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('telebirr_txn_id', txnId)
+      .maybeSingle();
+
+    if (subErr) throw subErr;
+    if (!sub) {
+      console.warn('[webhook] Unknown txn:', txnId);
+      return res.status(404).json({ error: 'Unknown transaction' });
+    }
+
+    if (!succeeded) {
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({ status: 'failed' })
+        .eq('id', sub.id);
+      return res.json({ received: true, status: 'failed' });
+    }
+
+    // Idempotency: already activated
+    if (sub.status === 'active') {
+      return res.json({ received: true, status: 'already_active' });
+    }
+
+    // ---- 4. Activate subscription ----
+    const plan = PLANS[sub.plan_type] || PLANS.monthly;
+    const startedAt = new Date();
+    const expiresAt = new Date(startedAt.getTime() + plan.days * 86400 * 1000);
+
+    await supabaseAdmin
+      .from('subscriptions')
+      .update({
+        status: 'active',
+        started_at: startedAt.toISOString(),
+        expires_at: expiresAt.toISOString(),
+      })
+      .eq('id', sub.id);
+
+    // ---- 5. Unlock premium on the profile ----
+    await supabaseAdmin
+      .from('profiles')
+      .update({ is_premium: true, daily_likes_used: 0, last_like_reset: startedAt.toISOString() })
+      .eq('id', sub.user_id);
+
+    console.log(`[webhook] Member+ activated for ${sub.user_id} until ${expiresAt.toISOString()}`);
+
+    // Tele Birr expects a plain acknowledgement
+    res.json({ code: '0', message: 'success', received: true });
+  } catch (err) {
+    console.error('[POST /api/payments/telebirr/webhook]', err);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+/* ------------------------------------------------------------
+ * DEV-ONLY: simulate a successful payment (remove in prod)
+ * POST /api/payments/mock-confirm  { txn_id }
+ * ---------------------------------------------------------- */
+app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  try {
+    const { txn_id } = req.body || {};
+    if (!txn_id) return res.status(400).json({ error: 'txn_id is required' });
+
+    const { data: sub } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('telebirr_txn_id', txn_id)
+      .eq('user_id', req.profile.id)
+      .maybeSingle();
+
+    if (!sub) return res.status(404).json({ error: 'Unknown transaction' });
+
+    const plan = PLANS[sub.plan_type] || PLANS.monthly;
+    const startedAt = new Date();
+    const expiresAt = new Date(startedAt.getTime() + plan.days * 86400 * 1000);
+
+    await supabaseAdmin
+      .from('subscriptions')
+      .update({
+        status: 'active',
+        started_at: startedAt.toISOString(),
+        expires_at: expiresAt.toISOString(),
+      })
+      .eq('id', sub.id);
+
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .update({ is_premium: true, daily_likes_used: 0, last_like_reset: startedAt.toISOString() })
+      .eq('id', req.profile.id)
+      .select('*')
+      .single();
+
+    res.json({ is_premium: true, profile, subscription: { ...sub, status: 'active' } });
+  } catch (err) {
+    console.error('[POST /api/payments/mock-confirm]', err);
+    res.status(500).json({ error: 'Mock confirmation failed' });
+  }
+});
+
+/* ------------------------------------------------------------
+ * 404 + ERROR HANDLERS
+ * ---------------------------------------------------------- */
+app.use((req, res) => {
+  res.status(404).json({ error: `No route for ${req.method} ${req.path}` });
+});
+
+app.use((err, _req, res, _next) => {
+  console.error('[unhandled]', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+/* ------------------------------------------------------------
+ * START
+ * ---------------------------------------------------------- */
+app.listen(PORT, () => {
+  console.log(`\n  Hearthside API running on http://localhost:${PORT}`);
+  console.log(`  Health check:  http://localhost:${PORT}/api/health`);
+  console.log(`  Free like cap: ${FREE_LIKE_LIMIT}/day`);
+  console.log(
+    `  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'MOCK (no API key set)'}\n`
   );
 });
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(session({
-    secret: 'bingo_super_secret_key_change_me',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false, maxAge: 1000 * 60 * 60 * 24 }
-}));
-
-// Serve the frontend
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-
-
-// User data storage
-const USERS_FILE = './users.json';
-fs.ensureFileSync(USERS_FILE);
-let users = {};
-try {
-    users = fs.readJsonSync(USERS_FILE);
-} catch (e) { users = {}; }
-
-function saveUsers() {
-    fs.writeJsonSync(USERS_FILE, users, { spaces: 2 });
-}
-
-function getLoggedInUser(req) {
-    if (!req.session.userId) return null;
-    return Object.values(users).find(u => u.userId === req.session.userId);
-}
-
-// ---------- AUTH ENDPOINTS ----------
-app.post('/api/register', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
-    if (users[username]) return res.status(400).json({ error: 'Username already exists' });
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const userId = uuidv4();
-    users[username] = {
-        userId,
-        username,
-        password: hashedPassword,
-        balance: 100,
-        createdAt: new Date().toISOString()
-    };
-    saveUsers();
-    req.session.userId = userId;
-    req.session.username = username;
-    res.json({ success: true, username, balance: users[username].balance });
-});
-
-app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
-    const user = users[username];
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: 'Invalid credentials' });
-    req.session.userId = user.userId;
-    req.session.username = username;
-    res.json({ success: true, username, balance: user.balance });
-});
-
-app.post('/api/logout', (req, res) => {
-    req.session.destroy();
-    res.json({ success: true });
-});
-
-app.get('/api/me', (req, res) => {
-    const user = getLoggedInUser(req);
-    if (!user) return res.status(401).json({ error: 'Not logged in' });
-    res.json({ username: user.username, balance: user.balance });
-});
-
-app.post('/api/deposit', async (req, res) => {
-    const user = getLoggedInUser(req);
-    if (!user) return res.status(401).json({ error: 'Not logged in' });
-    const { amount } = req.body;
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) return res.status(400).json({ error: 'Invalid amount' });
-    // Simulate deposit – replace with real Telebirr/Chapa integration
-    user.balance += numAmount;
-    saveUsers();
-    res.json({ success: true, newBalance: user.balance });
-});
-
-app.post('/api/withdraw', async (req, res) => {
-    const user = getLoggedInUser(req);
-    if (!user) return res.status(401).json({ error: 'Not logged in' });
-    const { amount } = req.body;
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) return res.status(400).json({ error: 'Invalid amount' });
-    if (user.balance < numAmount) return res.status(400).json({ error: 'Insufficient balance' });
-    user.balance -= numAmount;
-    saveUsers();
-    res.json({ success: true, newBalance: user.balance });
-});
-
-// ---------- GAME STATE ----------
-let players = {};           // socketId -> player object
-let takenCards = new Set();
-let gameActive = false;
-let calledNumbers = [];
-let autoInterval = null;
-let countdownTimeout = null;
-let countdownSeconds = 30;
-let isLobbyOpen = true;
-const GAME_COST = 10;
-const HOUSE_PERCENT = 0.2; // 20% for you
-
-function calculatePrize() {
-    const playerCount = Object.keys(players).length;
-    return GAME_COST * playerCount * (1 - HOUSE_PERCENT);
-}
-function generateCardFromNumber(cardNum) {
-    function seededRandom(seed) {
-        let x = Math.sin(seed) * 10000;
-        return x - Math.floor(x);
-    }
-    function column(min, max, seedOffset) {
-        let col = [];
-        let seed = cardNum * 131 + seedOffset;
-        while (col.length < 5) {
-            let n = Math.floor(seededRandom(seed++) * (max - min + 1)) + min;
-            if (!col.includes(n)) col.push(n);
-        }
-        return col;
-    }
-    let B = column(1, 15, 1);
-    let I = column(16, 30, 2);
-    let N = column(31, 45, 3);
-    let G = column(46, 60, 4);
-    let O = column(61, 75, 5);
-    let card = [];
-    for (let i = 0; i < 5; i++) card.push(B[i], I[i], N[i], G[i], O[i]);
-    card[12] = "FREE";
-    return card;
-}
-
-function broadcastAvailableCards() {
-    const available = [];
-    for (let i = 1; i <= 100; i++) if (!takenCards.has(i)) available.push(i);
-    io.emit('availableCards', available);
-}
-
-function broadcastPlayers() {
-    const playerList = Object.values(players).map(p => ({ id: p.id, name: p.name, cardNumber: p.cardNumber }));
-    io.emit('playersList', playerList);
-}
-
-function fullReset() {
-    if (autoInterval) clearInterval(autoInterval);
-    if (countdownTimeout) clearTimeout(countdownTimeout);
-    autoInterval = null;
-    gameActive = false;
-    calledNumbers = [];
-    isLobbyOpen = true;
-    countdownSeconds = 30;
-    takenCards.clear();
-    players = {};
-    broadcastAvailableCards();
-    io.emit('lobbyReset', { countdown: countdownSeconds });
-}
-
-function startCountdown() {
-    if (countdownTimeout) clearInterval(countdownTimeout);
-    countdownSeconds = 30;
-    io.emit('countdownTick', countdownSeconds);
-    countdownTimeout = setInterval(() => {
-        countdownSeconds--;
-        io.emit('countdownTick', countdownSeconds);
-        if (countdownSeconds <= 0) {
-            clearInterval(countdownTimeout);
-            countdownTimeout = null;
-            startGame();
-        }
-    }, 1000);
-}
-
-function startGame() {
-    if (gameActive) return;
-    // Deduct cost from all players
-    const playersToRemove = [];
-    for (let id in players) {
-        const p = players[id];
-        const user = users[p.username];
-        if (!user || user.balance < GAME_COST) {
-            playersToRemove.push(id);
-            io.to(id).emit('error', `Insufficient balance (need ${GAME_COST} credits). Please deposit.`);
-        } else {
-            user.balance -= GAME_COST;
-            saveUsers();
-            io.to(id).emit('balanceUpdate', user.balance);
-        }
-    }
-    playersToRemove.forEach(id => {
-        const cardNum = players[id].cardNumber;
-        takenCards.delete(cardNum);
-        delete players[id];
-    });
-    broadcastAvailableCards();
-    broadcastPlayers();
-
-    if (Object.keys(players).length === 0) {
-        io.emit('gameError', 'No players with enough balance. Game canceled.');
-        fullReset();
-        return;
-    }
-
-    gameActive = true;
-    isLobbyOpen = false;
-    calledNumbers = [];
-    io.emit('gameStarted');
-
-    for (let id in players) {
-        const p = players[id];
-        p.marked = new Array(25).fill(false);
-        p.marked[12] = true;
-        io.to(id).emit('cardAssigned', {
-            playerId: id,
-            card: p.card,
-            gameActive: true
-        });
-    }
-
-    if (autoInterval) clearInterval(autoInterval);
-    autoInterval = setInterval(() => {
-        if (!gameActive) return;
-        let available = [];
-        for (let i = 1; i <= 75; i++) if (!calledNumbers.includes(i)) available.push(i);
-        if (available.length === 0) {
-            fullReset();
-            return;
-        }
-        const newNumber = available[Math.floor(Math.random() * available.length)];
-        calledNumbers.push(newNumber);
-        io.emit('newNumber', newNumber);
-    }, 4000);
-}
-
-function checkWin(marked) {
-    // Rows
-    for (let r = 0; r < 5; r++) {
-        let win = true;
-        for (let c = 0; c < 5; c++) if (!marked[r * 5 + c]) { win = false; break; }
-        if (win) return true;
-    }
-    // Columns
-    for (let c = 0; c < 5; c++) {
-        let win = true;
-        for (let r = 0; r < 5; r++) if (!marked[r * 5 + c]) { win = false; break; }
-        if (win) return true;
-    }
-    // Diagonals
-    let diag1 = true, diag2 = true;
-    for (let i = 0; i < 5; i++) {
-        if (!marked[i * 5 + i]) diag1 = false;
-        if (!marked[i * 5 + (4 - i)]) diag2 = false;
-    }
-    if (diag1 || diag2) return true;
-    // Four corners
-    const corners = [0, 4, 20, 24];
-    return corners.every(idx => marked[idx]);
-}
-
-function handleMark(socketId, cellIndex, numberValue) {
-    const player = players[socketId];
-    if (!player || !gameActive) return false;
-    if (!calledNumbers.includes(numberValue)) return false;
-    if (player.card[cellIndex] !== numberValue) return false;
-    if (player.marked[cellIndex]) return false;
-    player.marked[cellIndex] = true;
-    io.to(socketId).emit('markConfirmed', { cellIndex, number: numberValue });
-    if (checkWin(player.marked)) {
-        gameActive = false;
-        if (autoInterval) clearInterval(autoInterval);
-        autoInterval = null;
-        // Award prize
-        const prize = calculatePrize();
-
-        winnerUser.balance += prize;
-        saveUsers();
-
-        io.to(socketId).emit('balanceUpdate', winnerUser.balance);
-
-
-io.emit('gameWinner', {
-    winnerId: socketId,
-    winnerName: player.name,
-    prize: prize,
-    players: Object.keys(players).length
-});
-     io.emit('prizeUpdate', {
-    prize: calculatePrize(),
-    players: Object.keys(players).length
-}); 
-        setTimeout(() => fullReset(), 5000);
-        return true;
-    }
-    return false;
-}
-
-// ---------- SOCKET.IO ----------
-io.on('connection', (socket) => {
-    console.log('Client connected', socket.id);
-
-    socket.on('auth', ({ userId, username }) => {
-        socket.userId = userId;
-        socket.username = username;
-        const available = [];
-        for (let i = 1; i <= 100; i++) if (!takenCards.has(i)) available.push(i);
-        socket.emit('availableCards', available);
-        socket.emit('lobbyState', { isLobbyOpen, countdown: countdownSeconds, gameActive });
-        const user = users[username];
-        if (user) socket.emit('balanceUpdate', user.balance);
-    });
-
-    socket.on('selectCard', ({ name, cardNumber }) => {
-        if (!isLobbyOpen) {
-            socket.emit('joinError', 'Game already started');
-            return;
-        }
-        const num = parseInt(cardNumber);
-        if (isNaN(num) || num < 1 || num > 100) return;
-        if (takenCards.has(num)) {
-            socket.emit('joinError', `Card ${num} already taken`);
-            return;
-        }
-        if (players[socket.id]) {
-            takenCards.delete(players[socket.id].cardNumber);
-        }
-        takenCards.add(num);
-        const card = generateCardFromNumber(num);
-        players[socket.id] = {
-            id: socket.id,
-            name: name,
-            cardNumber: num,
-            card: card,
-            marked: new Array(25).fill(false),
-            userId: socket.userId,
-            username: socket.username
-        };
-        players[socket.id].marked[12] = true;
-        socket.emit('cardAssigned', { playerId: socket.id, card, gameActive: false });
-        broadcastAvailableCards();
-        broadcastPlayers();
-        if (Object.keys(players).length === 1 && isLobbyOpen && !countdownTimeout) {
-            startCountdown();
-        }
-    });
-
-    socket.on('markNumber', ({ cellIndex, number }) => {
-        handleMark(socket.id, cellIndex, number);
-    });
-
-    socket.on('disconnect', () => {
-        if (players[socket.id]) {
-            const cardNum = players[socket.id].cardNumber;
-            takenCards.delete(cardNum);
-            delete players[socket.id];
-            broadcastAvailableCards();
-            broadcastPlayers();
-        }
-        if (Object.keys(players).length === 0 && autoInterval) {
-            clearInterval(autoInterval);
-            autoInterval = null;
-            gameActive = false;
-            isLobbyOpen = true;
-            if (countdownTimeout) clearTimeout(countdownTimeout);
-            countdownTimeout = null;
-            countdownSeconds = 30;
-        }
-    });
-});
-
-const PORT = process.env.PORT || 13926;
-server.listen(PORT, () => console.log(`✅ Bingo server running on http://localhost:${PORT}`));
+module.exports = app;
