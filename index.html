@@ -12,6 +12,7 @@
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/config.js"></script>
 
 <script>
   tailwind.config = {
@@ -119,7 +120,7 @@
 <div id="app" class="pb-0">
 
   <!-- ============================================================
-       SCREEN 0 — AUTH (sign in / sign up)
+       SCREEN 0 — AUTH
        ============================================================ -->
   <section id="screen-auth" class="screen active">
     <div class="min-h-dvh flex items-center justify-center px-5 py-10">
@@ -131,7 +132,6 @@
         </div>
 
         <div class="bg-white rounded-card shadow-soft border border-line p-6">
-          <!-- Tabs -->
           <div class="flex bg-cream rounded-full p-1 mb-5">
             <button id="tabSignIn"
               class="flex-1 py-2.5 rounded-full text-[13.5px] font-bold transition bg-white shadow-soft">
@@ -143,7 +143,6 @@
             </button>
           </div>
 
-          <!-- Form -->
           <form id="authForm" class="space-y-3.5">
             <div id="signupFields" class="space-y-3.5 hidden">
               <div>
@@ -191,7 +190,7 @@
             <p id="authError" class="hidden text-[12.5px] text-red-600 bg-red-50 border border-red-100 rounded-[12px] px-3 py-2.5"></p>
 
             <button id="authSubmit" type="submit"
-              class="w-full h-13 py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
+              class="w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
               Sign in
             </button>
           </form>
@@ -209,7 +208,6 @@
        SCREEN 1 — DISCOVER
        ============================================================ -->
   <section id="screen-discover" class="screen pb-32">
-
     <header class="px-5 pt-7 pb-4 flex items-start justify-between">
       <div>
         <h1 class="text-[27px] leading-none font-extrabold tracking-[-0.02em]">Hearthside</h1>
@@ -458,7 +456,6 @@
         </div>
 
         <div class="space-y-3.5" id="planList">
-
           <button data-plan="monthly"
             class="plan-card w-full text-left bg-white rounded-card border-2 border-line p-5 shadow-soft transition active:scale-[.99]">
             <div class="flex items-start justify-between gap-3">
@@ -608,18 +605,23 @@
 'use strict';
 
 /* ============================================================
- * 0. CONFIG
+ * 0. CONFIG (values injected by /config.js from server env)
  * ========================================================== */
+const SUPABASE_URL      = window.SUPABASE_URL      || '';
+const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
+const API_BASE          = window.HEARTHSIDE_API    || '';
 
-// ---- Supabase browser client ----
-// Fill these in with your public Supabase values (safe to expose).
-// You can also inject them via a config script tag from the server.
-const SUPABASE_URL      = window.SUPABASE_URL      || 'https://YOUR-PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR-ANON-KEY';
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('[hearthside] Missing Supabase config. /config.js returned empty values.');
+  document.addEventListener('DOMContentLoaded', () => {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:14px;background:#fee;color:#900;font:600 13px/1.4 Inter,sans-serif;text-align:center;z-index:9999';
+    banner.textContent = 'Configuration missing. Check that SUPABASE_URL and SUPABASE_ANON_KEY are set on the server.';
+    document.body.appendChild(banner);
+  });
+}
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const API_BASE = window.HEARTHSIDE_API || '';
 
 const PLANS = {
   monthly: { plan_type: 'monthly', amount_etb: 450,  label: 'Member+ Monthly' },
@@ -744,7 +746,6 @@ async function api(path, { method = 'GET', body, auth = true } = {}) {
   return data;
 }
 
-/** Simple wrapper that logs but re-throws — no fake fallback data. */
 async function safeApi(path, options, emptyFallback) {
   try {
     return await api(path, options);
@@ -833,7 +834,6 @@ async function handleAuthSubmit(e) {
         return;
       }
 
-      // Persist the extra profile fields (trigger already created the row)
       const userId = data.user.id;
       await supabase.from('profiles').update({
         name, age, gender, city,
@@ -1494,7 +1494,6 @@ async function sendMessage() {
   }, { message: msg });
 }
 
-/* ---------- realtime ---------- */
 function subscribeToMatch(matchId) {
   if (state.realtimeChannel) {
     supabase.removeChannel(state.realtimeChannel);
@@ -1510,7 +1509,7 @@ function subscribeToMatch(matchId) {
       filter: `match_id=eq.${matchId}`,
     }, (payload) => {
       const msg = payload.new;
-      if (msg.sender_id === state.myId) return; // already shown locally
+      if (msg.sender_id === state.myId) return;
 
       const list = (state.messages[matchId] ||= []);
       if (list.some((m) => m.id === msg.id)) return;
@@ -1595,7 +1594,6 @@ async function payWithTelebirr() {
       return;
     }
 
-    // Mock flow
     label.textContent = 'Waiting for approval…';
     await wait(1500);
 
@@ -1659,12 +1657,10 @@ function handleUndo() {
  * 16. EVENT BINDING
  * ========================================================== */
 function bindEvents() {
-  // ---- Auth ----
   $('#tabSignIn').addEventListener('click', () => setAuthMode('signin'));
   $('#tabSignUp').addEventListener('click', () => setAuthMode('signup'));
   $('#authForm').addEventListener('submit', handleAuthSubmit);
 
-  // ---- Discover ----
   $('#likeBtn').addEventListener('click', () => commitSwipe('like'));
   $('#passBtn').addEventListener('click', () => commitSwipe('pass'));
   $('#undoBtn').addEventListener('click', handleUndo);
@@ -1674,10 +1670,8 @@ function bindEvents() {
     else openPaywall();
   });
 
-  // ---- Likes ----
   $('#likesUnlockBtn').addEventListener('click', openPaywall);
 
-  // ---- Chat ----
   $('#chatBack').addEventListener('click', () => showScreen('messages'));
   $('#sendBtn').addEventListener('click', sendMessage);
 
@@ -1715,7 +1709,6 @@ function bindEvents() {
     e.target.value = '';
   });
 
-  // ---- Paywall ----
   $('#paywallBack').addEventListener('click', () => showScreen('discover'));
   $$('#planList .plan-card').forEach((card) => {
     card.addEventListener('click', () => {
@@ -1725,7 +1718,6 @@ function bindEvents() {
   });
   $('#payBtn').addEventListener('click', payWithTelebirr);
 
-  // ---- Match modal ----
   $('#matchKeepSwiping').addEventListener('click', hideMatchModal);
   $('#matchSayHi').addEventListener('click', () => {
     const partner = pendingMatch;
@@ -1736,7 +1728,6 @@ function bindEvents() {
     else showScreen('messages');
   });
 
-  // ---- Premium modal ----
   $('#premiumDone').addEventListener('click', () => {
     const modal = $('#premiumModal');
     modal.classList.add('hidden');
@@ -1744,12 +1735,10 @@ function bindEvents() {
     showScreen('likes');
   });
 
-  // ---- Coming soon ----
   $$('.js-coming-soon').forEach((btn) => {
     btn.addEventListener('click', () => toast(`${btn.dataset.label} coming soon.`));
   });
 
-  // ---- Escape closes overlays ----
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     hideMatchModal();
@@ -1767,7 +1756,6 @@ async function enterApp() {
 
   state.myId = user.id;
 
-  // Fetch my profile
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
@@ -1789,7 +1777,6 @@ async function enterApp() {
   state.matches = data.matches || [];
   state.matches.forEach((m) => m.partner && state.matchedProfileIds.add(m.partner.id));
 
-  // Subscribe to likes so the count stays fresh
   supabase.channel('likes-you')
     .on('postgres_changes', {
       event: 'INSERT',
@@ -1810,7 +1797,6 @@ async function boot() {
   bindEvents();
   setAuthMode('signin');
 
-  // Listen for auth changes (sign out, token refresh, etc.)
   supabase.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_OUT') handleSignOut();
   });
