@@ -57,6 +57,8 @@ app.use(
 );
 
 app.use(express.json({ limit: '2mb' }));
+const path = require('path');
+app.use(express.static(path.join(__dirname, '')));
 
 /* ------------------------------------------------------------
  * 2. SUPABASE CLIENTS
