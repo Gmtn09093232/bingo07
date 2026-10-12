@@ -59,6 +59,28 @@ app.use(
 
 app.use(express.json({ limit: '2mb' }));
 
+/* ------------------------------------------------------------
+ * Public config for the browser.
+ * Exposes only SUPABASE_URL and the ANON key (both safe to
+ * expose — RLS protects the data). NEVER send the service key.
+ * ---------------------------------------------------------- */
+app.get('/config.js', (_req, res) => {
+  const url = process.env.SUPABASE_URL || '';
+  const anon = process.env.SUPABASE_ANON_KEY || '';
+
+  if (!url || !anon) {
+    console.error('[config.js] SUPABASE_URL or SUPABASE_ANON_KEY is missing');
+  }
+
+  res.type('application/javascript');
+  res.set('Cache-Control', 'no-store');
+  res.send(
+    `window.SUPABASE_URL = ${JSON.stringify(url)};\n` +
+    `window.SUPABASE_ANON_KEY = ${JSON.stringify(anon)};\n` +
+    `window.HEARTHSIDE_API = '';\n`
+  );
+});
+
 // ---- Static frontend ----
 // Serves public/index.html at "/" and any assets under public/
 app.use(express.static(path.join(__dirname, '')));
@@ -85,11 +107,6 @@ function supabaseAsUser(token) {
  * 3. HELPERS
  * ---------------------------------------------------------- */
 
-/**
- * Haversine great-circle distance in kilometres.
- * (Mirrors public.haversine_km() in schema.sql so the API can
- *  compute distances without a round-trip when needed.)
- */
 function haversineKm(lat1, lon1, lat2, lon2) {
   if ([lat1, lon1, lat2, lon2].some((v) => v === null || v === undefined)) {
     return null;
@@ -110,7 +127,6 @@ function formatDistance(km) {
   return `${Math.round(km)} km away`;
 }
 
-/** True when two timestamps fall on different UTC calendar days. */
 function isNewDay(lastReset) {
   if (!lastReset) return true;
   const a = new Date(lastReset);
@@ -122,7 +138,6 @@ function isNewDay(lastReset) {
   );
 }
 
-/** Normalise a (user1,user2) pair so it is order-independent. */
 function sortPair(a, b) {
   return a < b ? [a, b] : [b, a];
 }
@@ -163,10 +178,6 @@ async function requireAuth(req, res, next) {
   }
 }
 
-/**
- * Rolls the daily like counter forward if the UTC day changed.
- * Returns the up-to-date profile row.
- */
 async function refreshDailyLikes(profile) {
   if (!profile) return profile;
   if (isNewDay(profile.last_like_reset)) {
@@ -191,8 +202,6 @@ app.get('/api/health', (_req, res) => {
 
 /* ------------------------------------------------------------
  * GET /api/discover
- * Profiles the user has not liked/passed, sorted by proximity.
- * Query: ?lat=9.03&lng=38.74&limit=30&max_km=100
  * ---------------------------------------------------------- */
 app.get('/api/discover', requireAuth, async (req, res) => {
   try {
@@ -210,7 +219,6 @@ app.get('/api/discover', requireAuth, async (req, res) => {
       });
     }
 
-    // Use the user-scoped client so auth.uid() resolves inside the RPC.
     const userClient = supabaseAsUser(req.token);
     const { data, error } = await userClient.rpc('get_nearby_profiles', {
       p_lat: lat,
@@ -246,9 +254,6 @@ app.get('/api/discover', requireAuth, async (req, res) => {
 
 /* ------------------------------------------------------------
  * POST /api/likes
- * Body: { likee_id: uuid, is_like: boolean }
- * Enforces the free daily like limit and creates a match on
- * a mutual like.
  * ---------------------------------------------------------- */
 app.post('/api/likes', requireAuth, async (req, res) => {
   try {
@@ -261,7 +266,6 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'You cannot like yourself' });
     }
 
-    // ---- Daily limit (likes only, passes are always free) ----
     if (is_like === true && !me.is_premium) {
       if (me.daily_likes_used >= FREE_LIKE_LIMIT) {
         return res.status(429).json({
@@ -277,7 +281,6 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       }
     }
 
-    // ---- Upsert the like/pass ----
     const { data: likeRow, error: likeErr } = await supabaseAdmin
       .from('likes')
       .upsert(
@@ -289,7 +292,6 @@ app.post('/api/likes', requireAuth, async (req, res) => {
 
     if (likeErr) throw likeErr;
 
-    // ---- Increment the counter for real likes ----
     let updatedProfile = me;
     if (is_like === true) {
       const { data } = await supabaseAdmin
@@ -310,12 +312,10 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       is_premium: updatedProfile.is_premium,
     };
 
-    // ---- Pass: nothing else to do ----
     if (is_like !== true) {
       return res.json({ matched: false, like: likeRow, likes: likesMeta });
     }
 
-    // ---- Mutual like? ----
     const { data: reciprocal, error: recErr } = await supabaseAdmin
       .from('likes')
       .select('id')
@@ -330,7 +330,6 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       return res.json({ matched: false, like: likeRow, likes: likesMeta });
     }
 
-    // ---- Create the match (idempotent) ----
     const [u1, u2] = sortPair(me.id, likee_id);
 
     const { data: existing } = await supabaseAdmin
@@ -373,7 +372,6 @@ app.post('/api/likes', requireAuth, async (req, res) => {
 
 /* ------------------------------------------------------------
  * GET /api/matches
- * All mutual matches with the partner's profile + last message.
  * ---------------------------------------------------------- */
 app.get('/api/matches', requireAuth, async (req, res) => {
   try {
@@ -401,7 +399,6 @@ app.get('/api/matches', requireAuth, async (req, res) => {
 
     const partnerMap = Object.fromEntries((partners || []).map((p) => [p.id, p]));
 
-    // Latest message per match
     const matchIds = rows.map((m) => m.id);
     const { data: msgs } = await supabaseAdmin
       .from('messages')
@@ -442,7 +439,6 @@ app.get('/api/matches', requireAuth, async (req, res) => {
 
 /* ------------------------------------------------------------
  * GET /api/messages/:matchId
- * Chat history for a match the user belongs to.
  * ---------------------------------------------------------- */
 app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
   try {
@@ -472,7 +468,6 @@ app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
 
     if (error) throw error;
 
-    // Mark the partner's messages as read
     await supabaseAdmin
       .from('messages')
       .update({ is_read: true })
@@ -496,7 +491,6 @@ app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
 
 /* ------------------------------------------------------------
  * POST /api/messages
- * Body: { match_id, content?, media_url? }
  * ---------------------------------------------------------- */
 app.post('/api/messages', requireAuth, async (req, res) => {
   try {
@@ -542,8 +536,6 @@ app.post('/api/messages', requireAuth, async (req, res) => {
 
 /* ------------------------------------------------------------
  * GET /api/premium/likes
- * People who liked the current user — premium gated.
- * Free users receive a locked preview (blurred identities).
  * ---------------------------------------------------------- */
 app.get('/api/premium/likes', requireAuth, async (req, res) => {
   try {
@@ -566,7 +558,6 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
       return res.json({ is_premium: me.is_premium, total: 0, likes: [] });
     }
 
-    // Which of these already became matches?
     const { data: myMatches } = await supabaseAdmin
       .from('matches')
       .select('user1_id, user2_id')
@@ -584,7 +575,6 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
 
     const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
 
-    // ---- Premium: full identities ----
     if (me.is_premium) {
       const likes = rows
         .map((r) => {
@@ -602,7 +592,6 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
       return res.json({ is_premium: true, total, likes });
     }
 
-    // ---- Free: locked preview (no names, blurred avatars) ----
     const preview = rows.slice(0, 12).map((r) => {
       const p = profileMap[r.liker_id] || {};
       return {
@@ -636,13 +625,6 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
 
 /* ------------------------------------------------------------
  * POST /api/payments/telebirr/initiate
- * Body: { plan_type: 'monthly' | 'yearly' }
- *
- * NOTE: Real Tele Birr H5/App payment requires merchant
- * credentials + RSA signing of the payload. This endpoint
- * creates the pending subscription record and, when
- * TELEBIRR_API_KEY is present, forwards the request. Without
- * credentials it returns a MOCK checkout so the UI flow works.
  * ---------------------------------------------------------- */
 app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
   try {
@@ -673,7 +655,6 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
 
     if (error) throw error;
 
-    // ---- MOCK MODE (no merchant credentials configured) ----
     if (!TELEBIRR_API_KEY) {
       console.warn('[telebirr] TELEBIRR_API_KEY not set — returning mock checkout.');
       return res.status(201).json({
@@ -687,9 +668,6 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
       });
     }
 
-    // ---- LIVE MODE (placeholder — plug in real Tele Birr API) ----
-    // Tele Birr expects: appId, shortCode/merchantId, nonce, timestamp,
-    // and an RSA-signed `sign` field over the sorted payload.
     const payload = {
       appId: TELEBIRR_MERCHANT_ID,
       outTradeNo: txnId,
@@ -743,15 +721,9 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
 
 /* ------------------------------------------------------------
  * POST /api/payments/telebirr/webhook
- * Tele Birr calls this on payment success/failure.
- * Body (JSON): { outTradeNo | txn_id, status, tradeNo, paidAt }
- *
- * This route receives a RAW body (see middleware order above)
- * so we can verify the signature before trusting the payload.
  * ---------------------------------------------------------- */
 app.post('/api/payments/telebirr/webhook', async (req, res) => {
   try {
-    // ---- 1. Parse raw body ----
     let body = {};
     const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
     if (raw) {
@@ -764,7 +736,6 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
       body = req.body;
     }
 
-    // ---- 2. Verify signature (when a key is configured) ----
     const signature = req.headers['x-telebirr-signature'] || body.sign;
     if (TELEBIRR_API_KEY && signature) {
       const expected = crypto
@@ -789,7 +760,6 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
       rawStatus
     );
 
-    // ---- 3. Load the pending subscription ----
     const { data: sub, error: subErr } = await supabaseAdmin
       .from('subscriptions')
       .select('*')
@@ -810,12 +780,10 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
       return res.json({ received: true, status: 'failed' });
     }
 
-    // Idempotency: already activated
     if (sub.status === 'active') {
       return res.json({ received: true, status: 'already_active' });
     }
 
-    // ---- 4. Activate subscription ----
     const plan = PLANS[sub.plan_type] || PLANS.monthly;
     const startedAt = new Date();
     const expiresAt = new Date(startedAt.getTime() + plan.days * 86400 * 1000);
@@ -829,7 +797,6 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
       })
       .eq('id', sub.id);
 
-    // ---- 5. Unlock premium on the profile ----
     await supabaseAdmin
       .from('profiles')
       .update({ is_premium: true, daily_likes_used: 0, last_like_reset: startedAt.toISOString() })
@@ -837,7 +804,6 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
 
     console.log(`[webhook] Member+ activated for ${sub.user_id} until ${expiresAt.toISOString()}`);
 
-    // Tele Birr expects a plain acknowledgement
     res.json({ code: '0', message: 'success', received: true });
   } catch (err) {
     console.error('[POST /api/payments/telebirr/webhook]', err);
@@ -846,8 +812,7 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
 });
 
 /* ------------------------------------------------------------
- * DEV-ONLY: simulate a successful payment (remove in prod)
- * POST /api/payments/mock-confirm  { txn_id }
+ * DEV-ONLY: simulate a successful payment
  * ---------------------------------------------------------- */
 app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
   if (process.env.NODE_ENV === 'production') {
@@ -911,6 +876,7 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`\n  Hearthside API running on http://localhost:${PORT}`);
   console.log(`  Health check:  http://localhost:${PORT}/api/health`);
+  console.log(`  Config:        http://localhost:${PORT}/config.js`);
   console.log(`  Free like cap: ${FREE_LIKE_LIMIT}/day`);
   console.log(
     `  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'MOCK (no API key set)'}\n`
