@@ -85,6 +85,51 @@
   }
   .call-ctl:active { transform: scale(0.94); }
   .call-ctl.off { background:#fff; color:#1A1A1A; }
+
+  /* ---------- filter range slider ---------- */
+  .filter-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 999px;
+    background: #ECECEC;
+    outline: none;
+    width: 100%;
+  }
+  .filter-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: #F5B041;
+    border: 3px solid #FFFFFF;
+    box-shadow: 0 4px 12px -4px rgba(245,176,65,0.9), 0 2px 6px -2px rgba(26,26,26,0.25);
+    cursor: pointer;
+    transition: transform .15s ease;
+  }
+  .filter-range::-webkit-slider-thumb:active { transform: scale(1.1); }
+  .filter-range::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: #F5B041;
+    border: 3px solid #FFFFFF;
+    box-shadow: 0 4px 12px -4px rgba(245,176,65,0.9);
+    cursor: pointer;
+  }
+  .filter-range::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: #ECECEC;
+  }
+
+  .filter-gender-chip.selected {
+    background: #F5B041;
+    border-color: #F5B041;
+    color: #1A1A1A;
+    font-weight: 700;
+  }
 </style>
 </head>
 
@@ -302,23 +347,17 @@
       <p class="text-[13px] text-muted mt-1.5">Your presence on Hearthside.</p>
     </header>
 
-    <!-- Profile hero card -->
     <div class="px-5">
       <div class="relative bg-white rounded-card shadow-soft border border-line/70 overflow-hidden">
-        <!-- Cover image -->
         <div class="relative h-[180px] bg-hearth-100">
-          <img id="profileCoverImg" class="w-full h-full object-cover" alt=""
-               data-fallback="You" />
+          <img id="profileCoverImg" class="w-full h-full object-cover" alt="" data-fallback="You" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent"></div>
-
-          <!-- Premium badge -->
           <span id="profilePremiumBadge" class="hidden absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide">
             <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
             Member+
           </span>
         </div>
 
-        <!-- Avatar -->
         <div class="px-5 pb-5 -mt-12 relative">
           <div class="relative inline-block">
             <img id="profileAvatar" class="w-[84px] h-[84px] rounded-full object-cover border-4 border-white bg-hearth-100"
@@ -349,7 +388,6 @@
       </div>
     </div>
 
-    <!-- Info / settings -->
     <div class="px-5 mt-5">
       <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted ml-1 mb-2">Account</p>
       <div class="bg-white rounded-card shadow-soft border border-line/70 divide-y divide-line/70 overflow-hidden">
@@ -423,9 +461,7 @@
         </button>
       </div>
 
-      <p class="text-center text-[11px] text-muted/70 mt-6">
-        Hearthside · v1.0.0
-      </p>
+      <p class="text-center text-[11px] text-muted/70 mt-6">Hearthside · v1.0.0</p>
     </div>
   </section>
 
@@ -594,6 +630,117 @@
 
 
 <!-- ============================================================
+     FILTER MODAL
+     ============================================================ -->
+<div id="filterModal" class="hidden fixed inset-0 z-[75] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
+  <div id="filterPanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden flex flex-col" style="max-height: 90vh;">
+
+    <div class="shrink-0 px-5 pt-4 pb-3 border-b border-line/70">
+      <div class="w-10 h-1 rounded-full bg-line mx-auto mb-3"></div>
+      <div class="flex items-center justify-between">
+        <button id="filterReset" class="text-[14px] font-semibold text-muted active:opacity-70">Reset</button>
+        <h3 class="text-[15px] font-bold">Filters</h3>
+        <button id="filterClose" class="text-[14px] font-semibold text-hearth-600 active:opacity-70">Done</button>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto no-scrollbar px-5 py-5 space-y-6" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+
+      <section>
+        <div class="flex items-baseline justify-between mb-2">
+          <label class="text-[13px] font-bold text-charcoal">Maximum distance</label>
+          <span id="filterDistanceValue" class="text-[13px] font-bold text-hearth-600">100 km</span>
+        </div>
+        <input id="filterDistance" type="range" min="1" max="500" value="100" step="1" class="filter-range" />
+        <div class="flex justify-between text-[11px] text-muted mt-1.5">
+          <span>1 km</span>
+          <span id="filterDistanceMaxLabel">500 km</span>
+        </div>
+        <p id="filterDistanceHint" class="hidden text-[11.5px] text-amber-600 mt-2 bg-amber-50 border border-amber-100 rounded-[10px] px-2.5 py-2"></p>
+      </section>
+
+      <section class="relative" id="filterAgeSection">
+        <div class="flex items-baseline justify-between mb-2">
+          <label class="text-[13px] font-bold text-charcoal">Age range</label>
+          <span id="filterAgeValue" class="text-[13px] font-bold text-hearth-600">18 – 60</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <span class="text-[11px] text-muted font-semibold">Minimum</span>
+            <input id="filterMinAge" type="number" min="18" max="100" value="18"
+              class="mt-1 w-full h-11 rounded-[12px] bg-white border border-line px-3 text-[14px] outline-none focus:border-hearth-300 transition" />
+          </div>
+          <div>
+            <span class="text-[11px] text-muted font-semibold">Maximum</span>
+            <input id="filterMaxAge" type="number" min="18" max="100" value="60"
+              class="mt-1 w-full h-11 rounded-[12px] bg-white border border-line px-3 text-[14px] outline-none focus:border-hearth-300 transition" />
+          </div>
+        </div>
+        <div id="filterAgeLock" class="hidden absolute inset-0 rounded-[14px] bg-white/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-center">
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide mb-2">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
+            Member+
+          </span>
+          <p class="text-[12px] font-semibold text-charcoal">Unlock with Member+</p>
+        </div>
+      </section>
+
+      <section class="relative" id="filterGenderSection">
+        <label class="block text-[13px] font-bold text-charcoal mb-2">Show me</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button data-gender="any" class="filter-gender-chip py-2.5 rounded-full bg-white border border-line text-[13px] font-semibold active:scale-[.98] transition">Anyone</button>
+          <button data-gender="woman" class="filter-gender-chip py-2.5 rounded-full bg-white border border-line text-[13px] font-semibold active:scale-[.98] transition">Women</button>
+          <button data-gender="man" class="filter-gender-chip py-2.5 rounded-full bg-white border border-line text-[13px] font-semibold active:scale-[.98] transition">Men</button>
+          <button data-gender="non-binary" class="filter-gender-chip py-2.5 rounded-full bg-white border border-line text-[13px] font-semibold active:scale-[.98] transition">Non-binary</button>
+        </div>
+        <div id="filterGenderLock" class="hidden absolute inset-0 rounded-[14px] bg-white/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-center">
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide mb-2">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
+            Member+
+          </span>
+          <p class="text-[12px] font-semibold text-charcoal">Unlock with Member+</p>
+        </div>
+      </section>
+
+      <section class="relative" id="filterTagsSection">
+        <label class="block text-[13px] font-bold text-charcoal mb-1">Interests</label>
+        <p class="text-[11.5px] text-muted mb-2">Match people with at least one of these interests.</p>
+        <input id="filterTags" type="text" placeholder="Music, Baking, Cycling"
+          class="w-full h-12 rounded-[12px] bg-white border border-line px-4 text-[14px] outline-none focus:border-hearth-300 transition" />
+        <div id="filterTagChips" class="flex flex-wrap gap-1.5 mt-2.5"></div>
+        <div id="filterTagsLock" class="hidden absolute inset-0 rounded-[14px] bg-white/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-center">
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide mb-2">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
+            Member+
+          </span>
+          <p class="text-[12px] font-semibold text-charcoal">Unlock with Member+</p>
+        </div>
+      </section>
+
+      <div id="filterPremiumUpsell" class="hidden bg-hearth-50 border border-hearth-200/70 rounded-card p-4">
+        <p class="text-[13px] font-bold text-charcoal">Want more control?</p>
+        <p class="text-[12px] text-muted mt-1 leading-relaxed">
+          Member+ unlocks age range, gender preference, and interest filters — so you only see people who fit what you're looking for.
+        </p>
+        <button id="filterUpgradeBtn"
+          class="mt-3 w-full py-3 rounded-full bg-hearth shadow-amber font-extrabold text-[14px] active:scale-[.98] transition">
+          Unlock with Member+
+        </button>
+      </div>
+
+    </div>
+
+    <div class="shrink-0 px-5 py-4 border-t border-line/70" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+      <button id="filterApplyBtn"
+        class="w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
+        Apply filters
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
      EDIT PROFILE SHEET
      ============================================================ -->
 <div id="editProfileSheet" class="hidden fixed inset-0 z-[75] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
@@ -608,22 +755,18 @@
     </div>
 
     <div class="flex-1 overflow-y-auto no-scrollbar px-5 py-5" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));">
-
-      <!-- Avatar -->
       <div class="flex flex-col items-center mb-6">
         <img id="editAvatarPreview" class="w-[96px] h-[96px] rounded-full object-cover border-4 border-white shadow-soft bg-hearth-100"
              alt="" data-fallback="You" />
         <p class="text-[11.5px] text-muted mt-2">Avatar preview</p>
       </div>
 
-      <!-- Name -->
       <label class="block mb-4">
         <span class="text-[12px] font-semibold text-muted">Name</span>
         <input id="editName" type="text" maxlength="60" placeholder="Your name"
           class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
       </label>
 
-      <!-- Age + Gender -->
       <div class="grid grid-cols-2 gap-3 mb-4">
         <label class="block">
           <span class="text-[12px] font-semibold text-muted">Age</span>
@@ -643,14 +786,12 @@
         </label>
       </div>
 
-      <!-- City -->
       <label class="block mb-4">
         <span class="text-[12px] font-semibold text-muted">City</span>
         <input id="editCity" type="text" maxlength="80" placeholder="Addis Ababa"
           class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
       </label>
 
-      <!-- Bio -->
       <label class="block mb-4">
         <span class="text-[12px] font-semibold text-muted">Bio</span>
         <textarea id="editBio" rows="4" maxlength="500" placeholder="Tell people a little about yourself…"
@@ -658,7 +799,6 @@
         <span id="editBioCount" class="block text-[11px] text-muted text-right mt-1">0 / 500</span>
       </label>
 
-      <!-- Tags -->
       <label class="block mb-4">
         <span class="text-[12px] font-semibold text-muted">Interests / tags</span>
         <span class="block text-[11px] text-muted mt-0.5">Up to 8, comma-separated. E.g. Music, Baking, Cycling</span>
@@ -666,7 +806,6 @@
           class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
       </label>
 
-      <!-- Avatar URL -->
       <label class="block mb-3">
         <span class="text-[12px] font-semibold text-muted">Avatar image URL</span>
         <span class="block text-[11px] text-muted mt-0.5">Paste a link to a photo (https://…)</span>
@@ -681,7 +820,7 @@
 
 
 <!-- ============================================================
-     INFO SHEET (About / Privacy / Help / Terms)
+     INFO SHEET
      ============================================================ -->
 <div id="infoSheet" class="hidden fixed inset-0 z-[75] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
   <div id="infoPanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden flex flex-col" style="max-height: 88vh;">
@@ -693,10 +832,7 @@
         <button id="infoClose" class="text-[14px] font-semibold text-hearth-600 active:opacity-70 w-16 text-right">Done</button>
       </div>
     </div>
-
-    <div id="infoBody" class="flex-1 overflow-y-auto no-scrollbar px-5 py-5" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
-      <!-- Injected by JS -->
-    </div>
+    <div id="infoBody" class="flex-1 overflow-y-auto no-scrollbar px-5 py-5" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));"></div>
   </div>
 </div>
 
@@ -781,7 +917,6 @@
         Cancel
       </button>
     </div>
-
     <div id="ussdStep2" class="hidden">
       <div class="w-16 h-16 mx-auto rounded-full bg-hearth shadow-amber flex items-center justify-center mb-4">
         <svg class="w-8 h-8 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
@@ -995,7 +1130,7 @@ const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
 const API_BASE          = window.HEARTHSIDE_API    || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('[hearthside] Missing Supabase config.');
+  console.error('[hearthside] Missing Supabase config. /config.js returned empty values.');
 }
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1022,6 +1157,15 @@ const FEATURES = [
 /* ============================================================
  * 1. STATE
  * ========================================================== */
+const FILTER_STORAGE_KEY = 'hearthside_filters';
+const FILTER_DEFAULTS = {
+  max_km: 100,
+  min_age: 18,
+  max_age: 60,
+  gender: 'any',
+  tags: [],
+};
+
 const state = {
   screen: 'auth',
   isPremium: false,
@@ -1041,7 +1185,7 @@ const state = {
   call: null,
   mutedMatches: new Set(),
   pendingUssd: null,
-  editingProfile: false,
+  filters: { ...FILTER_DEFAULTS },
 };
 
 /* ============================================================
@@ -1214,6 +1358,7 @@ async function handleSignOut() {
   closeUssdModal();
   closeEditProfile();
   closeInfoSheet();
+  closeFilterSheet();
   $$('.screen').forEach((s) => s.classList.remove('active'));
   $('#screen-auth').classList.add('active');
   $('#bottomNav').classList.add('hidden');
@@ -1321,7 +1466,6 @@ async function renderProfile() {
       ).join('')
     : '<span class="text-[11.5px] text-muted">No interests yet</span>';
 
-  // Avatar & cover
   const avatarUrl = p.avatar_url || '';
   $('#profileAvatar').src = avatarUrl;
   $('#profileAvatar').dataset.fallback = p.name || 'You';
@@ -1329,11 +1473,9 @@ async function renderProfile() {
   $('#profileCoverImg').dataset.fallback = p.name || 'You';
   wireFallbacks($('#screen-profile'));
 
-  // Premium badge
   $('#profilePremiumBadge').classList.toggle('hidden', !state.isPremium);
   $('#profileMembershipSub').textContent = state.isPremium ? 'Member+ active' : 'Free plan';
 
-  // Update the async profile if we don't have it yet
   if (!state.myProfile) {
     try {
       const { profile } = await api('/api/profiles/me');
@@ -1345,7 +1487,6 @@ async function renderProfile() {
   }
 }
 
-/* ---------- Edit profile sheet ---------- */
 function openEditProfile() {
   const p = state.myProfile || {};
   $('#editName').value = p.name || '';
@@ -1388,7 +1529,6 @@ function updateEditAvatarPreview() {
   if (url) {
     img.src = url;
   } else {
-    // Show letter fallback
     const initial = ($('#editName').value.trim() || 'You').charAt(0).toUpperCase();
     const svg =
       `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">` +
@@ -1406,14 +1546,8 @@ function updateBioCount() {
   $('#editBioCount').textContent = `${len} / 500`;
 }
 
-function showEditError(msg) {
-  const el = $('#editProfileError');
-  el.textContent = msg;
-  el.classList.remove('hidden');
-}
-function hideEditError() {
-  $('#editProfileError').classList.add('hidden');
-}
+function showEditError(msg) { const el = $('#editProfileError'); el.textContent = msg; el.classList.remove('hidden'); }
+function hideEditError() { $('#editProfileError').classList.add('hidden'); }
 
 async function saveEditProfile() {
   hideEditError();
@@ -1429,11 +1563,7 @@ async function saveEditProfile() {
   if (!name) return showEditError('Please enter your name.');
   if (age && (parseInt(age, 10) < 18)) return showEditError('You must be 18 or older.');
 
-  const tags = tagsRaw
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .slice(0, 8);
+  const tags = tagsRaw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8);
 
   const saveBtn = $('#editProfileSave');
   saveBtn.disabled = true;
@@ -1450,10 +1580,7 @@ async function saveEditProfile() {
       avatar_url,
     };
 
-    const { profile } = await api('/api/profiles/me', {
-      method: 'PUT',
-      body: payload,
-    });
+    const { profile } = await api('/api/profiles/me', { method: 'PUT', body: payload });
 
     state.myProfile = profile;
     renderProfile();
@@ -1469,7 +1596,6 @@ async function saveEditProfile() {
   }
 }
 
-/* ---------- Info sheet ---------- */
 const INFO_CONTENT = {
   about: {
     title: 'About Hearthside',
@@ -1545,22 +1671,16 @@ const INFO_CONTENT = {
       <div class="space-y-4 text-[13.5px] leading-relaxed text-charcoal">
         <h3 class="text-[15px] font-bold">1. Eligibility</h3>
         <p class="text-muted">You must be at least 18 years old to use Hearthside.</p>
-
         <h3 class="text-[15px] font-bold">2. Your account</h3>
         <p class="text-muted">You're responsible for keeping your password secure and for all activity on your account.</p>
-
         <h3 class="text-[15px] font-bold">3. Community</h3>
         <p class="text-muted">Be kind. No harassment, hate speech, impersonation, or illegal activity. We may remove accounts that break these rules.</p>
-
         <h3 class="text-[15px] font-bold">4. Payments</h3>
         <p class="text-muted">Member+ subscriptions are non-refundable once activated. Cancel anytime from the app.</p>
-
         <h3 class="text-[15px] font-bold">5. Privacy</h3>
         <p class="text-muted">We collect only what's needed to run the service and never sell your data. See Privacy & safety for details.</p>
-
         <h3 class="text-[15px] font-bold">6. Contact</h3>
         <p class="text-muted">Questions? support@hearthside.app</p>
-
         <p class="text-[12px] text-muted/70 mt-6">Last updated: January 2026</p>
       </div>
     `,
@@ -1570,7 +1690,6 @@ const INFO_CONTENT = {
 function openInfoSheet(key) {
   const content = INFO_CONTENT[key];
   if (!content) return;
-
   $('#infoTitle').textContent = content.title;
   $('#infoBody').innerHTML = content.html;
 
@@ -1596,15 +1715,182 @@ function closeInfoSheet() {
 }
 
 /* ============================================================
- * 8. DISCOVER
+ * 8. FILTERS
+ * ========================================================== */
+function loadFilters() {
+  try {
+    const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (!raw) return { ...FILTER_DEFAULTS };
+    const parsed = JSON.parse(raw);
+    return {
+      max_km:  Math.min(Math.max(parseInt(parsed.max_km, 10) || FILTER_DEFAULTS.max_km, 1), 500),
+      min_age: Math.min(Math.max(parseInt(parsed.min_age, 10) || FILTER_DEFAULTS.min_age, 18), 100),
+      max_age: Math.min(Math.max(parseInt(parsed.max_age, 10) || FILTER_DEFAULTS.max_age, 18), 100),
+      gender:  ['any','woman','man','non-binary'].includes(parsed.gender) ? parsed.gender : 'any',
+      tags:    Array.isArray(parsed.tags) ? parsed.tags.slice(0, 8) : [],
+    };
+  } catch { return { ...FILTER_DEFAULTS }; }
+}
+
+function saveFilters(filters) {
+  try { localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters)); }
+  catch (err) { console.warn('[filters] save failed:', err.message); }
+}
+
+function filtersAreActive(f) {
+  return (
+    f.max_km !== FILTER_DEFAULTS.max_km ||
+    (state.isPremium && (
+      f.min_age !== FILTER_DEFAULTS.min_age ||
+      f.max_age !== FILTER_DEFAULTS.max_age ||
+      f.gender !== FILTER_DEFAULTS.gender ||
+      (f.tags && f.tags.length > 0)
+    ))
+  );
+}
+
+function openFilterSheet() {
+  const f = state.filters;
+
+  const distanceSlider = $('#filterDistance');
+  distanceSlider.max = state.isPremium ? 500 : 100;
+  distanceSlider.value = Math.min(f.max_km, parseInt(distanceSlider.max, 10));
+
+  $('#filterDistanceMaxLabel').textContent = `${distanceSlider.max} km`;
+  $('#filterDistanceValue').textContent = `${distanceSlider.value} km`;
+
+  const hint = $('#filterDistanceHint');
+  if (!state.isPremium && parseInt(distanceSlider.value, 10) >= 100) {
+    hint.textContent = 'Upgrade to Member+ to search up to 500 km away.';
+    hint.classList.remove('hidden');
+  } else {
+    hint.classList.add('hidden');
+  }
+
+  $('#filterMinAge').value = f.min_age;
+  $('#filterMaxAge').value = f.max_age;
+  $('#filterAgeValue').textContent = `${f.min_age} – ${f.max_age}`;
+
+  $$('.filter-gender-chip').forEach((chip) => {
+    chip.classList.toggle('selected', chip.dataset.gender === f.gender);
+  });
+
+  $('#filterTags').value = (f.tags || []).join(', ');
+  renderTagChips();
+
+  const locked = !state.isPremium;
+  $('#filterAgeLock').classList.toggle('hidden', !locked);
+  $('#filterGenderLock').classList.toggle('hidden', !locked);
+  $('#filterTagsLock').classList.toggle('hidden', !locked);
+  $('#filterPremiumUpsell').classList.toggle('hidden', !locked);
+
+  const sheet = $('#filterModal');
+  const panel = $('#filterPanel');
+  panel.classList.remove('sheet-out');
+  panel.classList.add('sheet-in');
+  sheet.classList.remove('hidden');
+  sheet.classList.add('flex');
+}
+
+function closeFilterSheet() {
+  const sheet = $('#filterModal');
+  const panel = $('#filterPanel');
+  if (!sheet || sheet.classList.contains('hidden')) return;
+  panel.classList.remove('sheet-in');
+  panel.classList.add('sheet-out');
+  setTimeout(() => {
+    sheet.classList.add('hidden');
+    sheet.classList.remove('flex');
+    panel.classList.remove('sheet-out');
+  }, 200);
+}
+
+function renderTagChips() {
+  const raw = $('#filterTags').value;
+  const tags = raw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8);
+  $('#filterTagChips').innerHTML = tags.map((t) =>
+    `<span class="px-2.5 py-1 rounded-full bg-hearth-50 text-hearth-600 text-[11px] font-semibold">${esc(t)}</span>`
+  ).join('');
+}
+
+function readFiltersFromUI() {
+  const maxKm = parseInt($('#filterDistance').value, 10) || FILTER_DEFAULTS.max_km;
+  let minAge = parseInt($('#filterMinAge').value, 10);
+  let maxAge = parseInt($('#filterMaxAge').value, 10);
+  if (Number.isNaN(minAge) || minAge < 18) minAge = 18;
+  if (Number.isNaN(maxAge) || maxAge > 100) maxAge = 100;
+  if (minAge > maxAge) [minAge, maxAge] = [maxAge, minAge];
+
+  const selectedChip = $('.filter-gender-chip.selected');
+  const gender = selectedChip?.dataset.gender || 'any';
+
+  const tags = $('#filterTags').value.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8);
+
+  return { max_km: maxKm, min_age: minAge, max_age: maxAge, gender, tags };
+}
+
+async function applyFilters() {
+  const next = readFiltersFromUI();
+
+  if (!state.isPremium) {
+    next.min_age = FILTER_DEFAULTS.min_age;
+    next.max_age = FILTER_DEFAULTS.max_age;
+    next.gender = FILTER_DEFAULTS.gender;
+    next.tags = [];
+  }
+
+  state.filters = next;
+  saveFilters(next);
+
+  closeFilterSheet();
+  await loadDeck();
+  toast('Filters applied');
+  updateFilterButtonState();
+}
+
+function resetFilters() {
+  state.filters = { ...FILTER_DEFAULTS };
+  saveFilters(state.filters);
+  openFilterSheet();
+  updateFilterButtonState();
+}
+
+function updateFilterButtonState() {
+  const btn = $('#filterBtn');
+  const active = filtersAreActive(state.filters);
+  btn.classList.toggle('bg-hearth', active);
+  btn.classList.toggle('bg-white', !active);
+  btn.classList.toggle('text-charcoal', active);
+}
+
+function handleFilter() { openFilterSheet(); }
+
+/* ============================================================
+ * 9. DISCOVER
  * ========================================================== */
 async function loadDeck() {
   let coords = null;
   try { coords = await getUserLocation(); } catch { /* fallback server-side */ }
-  const qs = coords ? `?lat=${coords.lat}&lng=${coords.lng}` : '';
-  const data = await safeApi(`/api/discover${qs}`, {}, {
+
+  const f = state.filters;
+  const params = new URLSearchParams();
+
+  if (coords) {
+    params.set('lat', coords.lat);
+    params.set('lng', coords.lng);
+  }
+  params.set('max_km', String(f.max_km));
+  if (state.isPremium) {
+    params.set('min_age', String(f.min_age));
+    params.set('max_age', String(f.max_age));
+    if (f.gender && f.gender !== 'any') params.set('gender', f.gender);
+    if (f.tags && f.tags.length) params.set('tags', f.tags.join(','));
+  }
+
+  const data = await safeApi(`/api/discover?${params.toString()}`, {}, {
     profiles: [], likes: { used: 0, limit: 8, remaining: 8, is_premium: state.isPremium },
   });
+
   state.deck = (data.profiles || []).slice();
   if (data.likes) {
     state.likes.used = data.likes.used ?? 0;
@@ -1791,7 +2077,7 @@ function registerMatch(partner, matchRow) {
 }
 
 /* ============================================================
- * 9. MATCH MODAL
+ * 10. MATCH MODAL
  * ========================================================== */
 let pendingMatch = null;
 
@@ -1814,7 +2100,7 @@ function hideMatchModal() {
 }
 
 /* ============================================================
- * 10. LIKES BANNER
+ * 11. LIKES BANNER
  * ========================================================== */
 function updateLikesBanner() {
   const count = Math.max(state.likesYouCount, state.matchedProfileIds.size);
@@ -1824,7 +2110,7 @@ function updateLikesBanner() {
 }
 
 /* ============================================================
- * 11. LIKES SCREEN
+ * 12. LIKES SCREEN
  * ========================================================== */
 async function renderLikes() {
   const locked = !state.isPremium;
@@ -1904,7 +2190,7 @@ async function renderLikes() {
 }
 
 /* ============================================================
- * 12. MATCHES
+ * 13. MATCHES
  * ========================================================== */
 async function renderMatches() {
   const data = await safeApi('/api/matches', {}, { matches: [] });
@@ -1950,7 +2236,7 @@ async function renderMatches() {
 }
 
 /* ============================================================
- * 13. THREADS
+ * 14. THREADS
  * ========================================================== */
 async function renderThreads() {
   if (!state.matches.length) {
@@ -2005,7 +2291,7 @@ async function renderThreads() {
 }
 
 /* ============================================================
- * 14. CHAT
+ * 15. CHAT
  * ========================================================== */
 async function openChat(matchId) {
   const match = state.matches.find((m) => m.id === matchId);
@@ -2108,7 +2394,7 @@ function subscribeToMatch(matchId) {
 }
 
 /* ============================================================
- * 15. CALLS
+ * 16. CALLS
  * ========================================================== */
 function openCall(kind) {
   const match = state.matches.find((m) => m.id === state.activeMatchId);
@@ -2236,7 +2522,7 @@ function toggleCallVideo() {
 }
 
 /* ============================================================
- * 16. CHAT OPTIONS SHEET
+ * 17. CHAT OPTIONS SHEET
  * ========================================================== */
 function openChatOptions() {
   const sheet = $('#chatOptionsSheet');
@@ -2303,7 +2589,7 @@ function handleChatOption(opt) {
 }
 
 /* ============================================================
- * 17. PARTNER PROFILE SHEET
+ * 18. PARTNER PROFILE SHEET
  * ========================================================== */
 function openPartnerProfile() {
   const match = state.matches.find((m) => m.id === state.activeMatchId);
@@ -2342,7 +2628,7 @@ function closePartnerProfile() {
 }
 
 /* ============================================================
- * 18. CONFIRM MODAL
+ * 19. CONFIRM MODAL
  * ========================================================== */
 let confirmHandler = null;
 
@@ -2380,7 +2666,7 @@ function closeConfirm() {
 }
 
 /* ============================================================
- * 19. UNMATCH
+ * 20. UNMATCH
  * ========================================================== */
 async function doUnmatch() {
   const id = state.activeMatchId;
@@ -2401,7 +2687,7 @@ async function doUnmatch() {
 }
 
 /* ============================================================
- * 20. PAYWALL — USSD flow
+ * 21. PAYWALL — USSD flow
  * ========================================================== */
 function openPaywall() {
   renderPlans();
@@ -2543,19 +2829,16 @@ async function unlockPremium() {
     toast('Premium unlocked locally, but failed to save.');
   }
 
+  updateFilterButtonState();
+
   const modal = $('#premiumModal');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
 }
 
 /* ============================================================
- * 21. MISC ACTIONS
+ * 22. MISC ACTIONS
  * ========================================================== */
-function handleFilter() {
-  if (!state.isPremium) { toast('Advanced filters are part of Member+.'); openPaywall(); return; }
-  toast('Filters coming soon — distance, age and tags.');
-}
-
 function handleUndo() {
   if (!state.isPremium) { toast('Undo is a Member+ feature.'); openPaywall(); return; }
   if (!state.lastPassed) { toast('Nothing to undo yet.'); return; }
@@ -2566,7 +2849,7 @@ function handleUndo() {
 }
 
 /* ============================================================
- * 22. EVENT BINDING
+ * 23. EVENT BINDING
  * ========================================================== */
 function bindEvents() {
   // ---- Auth ----
@@ -2578,10 +2861,52 @@ function bindEvents() {
   $('#likeBtn').addEventListener('click', () => commitSwipe('like'));
   $('#passBtn').addEventListener('click', () => commitSwipe('pass'));
   $('#undoBtn').addEventListener('click', handleUndo);
-  $('#filterBtn').addEventListener('click', handleFilter);
   $('#likesBanner').addEventListener('click', () => {
     if (state.isPremium) showScreen('likes');
     else openPaywall();
+  });
+
+  // ---- Filter modal ----
+  $('#filterBtn').addEventListener('click', handleFilter);
+  $('#filterClose').addEventListener('click', closeFilterSheet);
+  $('#filterReset').addEventListener('click', resetFilters);
+  $('#filterApplyBtn').addEventListener('click', applyFilters);
+  $('#filterModal').addEventListener('click', (e) => {
+    if (e.target === $('#filterModal')) closeFilterSheet();
+  });
+
+  $('#filterDistance').addEventListener('input', (e) => {
+    const v = e.target.value;
+    $('#filterDistanceValue').textContent = `${v} km`;
+    const hint = $('#filterDistanceHint');
+    if (!state.isPremium && parseInt(v, 10) >= 100) {
+      hint.textContent = 'Upgrade to Member+ to search up to 500 km away.';
+      hint.classList.remove('hidden');
+    } else {
+      hint.classList.add('hidden');
+    }
+  });
+
+  ['#filterMinAge', '#filterMaxAge'].forEach((sel) => {
+    $(sel).addEventListener('input', () => {
+      const min = parseInt($('#filterMinAge').value, 10) || 18;
+      const max = parseInt($('#filterMaxAge').value, 10) || 100;
+      $('#filterAgeValue').textContent = `${min} – ${max}`;
+    });
+  });
+
+  $$('.filter-gender-chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      $$('.filter-gender-chip').forEach((c) => c.classList.remove('selected'));
+      chip.classList.add('selected');
+    });
+  });
+
+  $('#filterTags').addEventListener('input', renderTagChips);
+
+  $('#filterUpgradeBtn').addEventListener('click', () => {
+    closeFilterSheet();
+    setTimeout(openPaywall, 220);
   });
 
   // ---- Likes ----
@@ -2599,7 +2924,6 @@ function bindEvents() {
     if (e.target === $('#editProfileSheet')) closeEditProfile();
   });
 
-  // Info sheet
   $$('.profile-row').forEach((row) => {
     row.addEventListener('click', () => {
       const key = row.dataset.row;
@@ -2616,7 +2940,6 @@ function bindEvents() {
     if (e.target === $('#infoSheet')) closeInfoSheet();
   });
 
-  // Sign out
   $('#profileSignOutBtn').addEventListener('click', () => {
     openConfirm({
       icon: 'signout',
@@ -2736,6 +3059,7 @@ function bindEvents() {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (state.call) { endCall(false); return; }
+    if (!$('#filterModal').classList.contains('hidden')) { closeFilterSheet(); return; }
     if (!$('#editProfileSheet').classList.contains('hidden')) { closeEditProfile(); return; }
     if (!$('#infoSheet').classList.contains('hidden')) { closeInfoSheet(); return; }
     if (!$('#ussdModal').classList.contains('hidden')) { closeUssdModal(); return; }
@@ -2752,7 +3076,7 @@ function bindEvents() {
 }
 
 /* ============================================================
- * 23. BOOT
+ * 24. BOOT
  * ========================================================== */
 async function enterApp() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -2770,6 +3094,7 @@ async function enterApp() {
   renderNav();
   updateLikesBanner();
   renderLikesMeter();
+  updateFilterButtonState();
 
   await loadDeck();
 
@@ -2791,6 +3116,7 @@ async function boot() {
   renderNav();
   bindEvents();
   setAuthMode('signin');
+  state.filters = loadFilters();
 
   supabase.auth.onAuthStateChange((event) => {
     if (event === 'SIGNED_OUT') handleSignOut();
