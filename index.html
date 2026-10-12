@@ -43,8 +43,6 @@
 
   #app { position:relative; width:100%; max-width:480px; margin:0 auto; min-height:100dvh; background:#FAFAFA; overflow:hidden; box-shadow:0 0 60px -20px rgba(0,0,0,0.25); }
 
-  /* Screens animate opacity only — no transform.
-     A lingering transform on .screen breaks position:fixed children. */
   .screen { display: none; animation: screenIn 0.28s ease both; }
   .screen.active { display: block; }
   @keyframes screenIn { from { opacity: 0; } to { opacity: 1; } }
@@ -296,39 +294,170 @@
 
 
   <!-- ============================================================
-       SCREEN 5 — CHAT
+       SCREEN 5 — PROFILE
+       ============================================================ -->
+  <section id="screen-profile" class="screen pb-32">
+    <header class="px-5 pt-7 pb-4">
+      <h1 class="text-[26px] font-extrabold tracking-[-0.02em]">Profile</h1>
+      <p class="text-[13px] text-muted mt-1.5">Your presence on Hearthside.</p>
+    </header>
+
+    <!-- Profile hero card -->
+    <div class="px-5">
+      <div class="relative bg-white rounded-card shadow-soft border border-line/70 overflow-hidden">
+        <!-- Cover image -->
+        <div class="relative h-[180px] bg-hearth-100">
+          <img id="profileCoverImg" class="w-full h-full object-cover" alt=""
+               data-fallback="You" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent"></div>
+
+          <!-- Premium badge -->
+          <span id="profilePremiumBadge" class="hidden absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
+            Member+
+          </span>
+        </div>
+
+        <!-- Avatar -->
+        <div class="px-5 pb-5 -mt-12 relative">
+          <div class="relative inline-block">
+            <img id="profileAvatar" class="w-[84px] h-[84px] rounded-full object-cover border-4 border-white bg-hearth-100"
+                 alt="" data-fallback="You" />
+            <button id="profileChangeAvatarBtn"
+              class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-hearth shadow-amber flex items-center justify-center active:scale-95 transition">
+              <svg class="w-4 h-4 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/>
+                <circle cx="12" cy="13" r="3.5"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="mt-3">
+            <h2 id="profileName" class="text-[22px] font-extrabold tracking-tight leading-tight">—</h2>
+            <p id="profileMetaLine" class="text-[13px] text-muted mt-1">—</p>
+          </div>
+
+          <p id="profileBio" class="text-[13.5px] text-charcoal mt-3 leading-relaxed">No bio yet.</p>
+
+          <div id="profileTags" class="flex flex-wrap gap-1.5 mt-3"></div>
+
+          <button id="profileEditBtn"
+            class="mt-5 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[14.5px] active:scale-[.98] transition">
+            Edit profile
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info / settings -->
+    <div class="px-5 mt-5">
+      <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted ml-1 mb-2">Account</p>
+      <div class="bg-white rounded-card shadow-soft border border-line/70 divide-y divide-line/70 overflow-hidden">
+        <button class="profile-row w-full flex items-center gap-3.5 px-4 py-3.5 text-left active:bg-cream transition" data-row="subscription">
+          <span class="w-9 h-9 rounded-full bg-hearth-50 flex items-center justify-center">
+            <svg style="width:17px;height:17px" class="text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/>
+            </svg>
+          </span>
+          <span class="flex-1">
+            <span class="block text-[14px] font-semibold">Membership</span>
+            <span id="profileMembershipSub" class="block text-[11.5px] text-muted mt-0.5">Free plan</span>
+          </span>
+          <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted ml-1 mt-5 mb-2">About</p>
+      <div class="bg-white rounded-card shadow-soft border border-line/70 divide-y divide-line/70 overflow-hidden">
+        <button class="profile-row w-full flex items-center gap-3.5 px-4 py-3.5 text-left active:bg-cream transition" data-row="about">
+          <span class="w-9 h-9 rounded-full bg-hearth-50 flex items-center justify-center">
+            <svg style="width:17px;height:17px" class="text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/><path d="M12 10.5V16"/><circle cx="12" cy="7.6" r="0.8" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="flex-1 text-[14px] font-semibold">About Hearthside</span>
+          <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <button class="profile-row w-full flex items-center gap-3.5 px-4 py-3.5 text-left active:bg-cream transition" data-row="privacy">
+          <span class="w-9 h-9 rounded-full bg-hearth-50 flex items-center justify-center">
+            <svg style="width:17px;height:17px" class="text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+            </svg>
+          </span>
+          <span class="flex-1 text-[14px] font-semibold">Privacy &amp; safety</span>
+          <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <button class="profile-row w-full flex items-center gap-3.5 px-4 py-3.5 text-left active:bg-cream transition" data-row="help">
+          <span class="w-9 h-9 rounded-full bg-hearth-50 flex items-center justify-center">
+            <svg style="width:17px;height:17px" class="text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.7-2.5 1.7-2.5 3.5"/>
+              <circle cx="12" cy="16.5" r="0.8" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="flex-1 text-[14px] font-semibold">Help centre</span>
+          <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+        <button class="profile-row w-full flex items-center gap-3.5 px-4 py-3.5 text-left active:bg-cream transition" data-row="terms">
+          <span class="w-9 h-9 rounded-full bg-hearth-50 flex items-center justify-center">
+            <svg style="width:17px;height:17px" class="text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/>
+            </svg>
+          </span>
+          <span class="flex-1 text-[14px] font-semibold">Terms &amp; privacy</span>
+          <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+
+      <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted ml-1 mt-5 mb-2">Session</p>
+      <div class="bg-white rounded-card shadow-soft border border-line/70 overflow-hidden">
+        <button id="profileSignOutBtn" class="w-full flex items-center gap-3.5 px-4 py-3.5 text-left active:bg-cream transition">
+          <span class="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center">
+            <svg style="width:17px;height:17px" class="text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/>
+              <path d="M10 17l-5-5 5-5"/>
+              <path d="M4 12h11"/>
+            </svg>
+          </span>
+          <span class="flex-1 text-[14px] font-semibold text-red-600">Sign out</span>
+        </button>
+      </div>
+
+      <p class="text-center text-[11px] text-muted/70 mt-6">
+        Hearthside · v1.0.0
+      </p>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       SCREEN 6 — CHAT
        ============================================================ -->
   <section id="screen-chat" class="screen">
     <div class="fixed inset-0 z-40 mx-auto max-w-app bg-cream flex flex-col">
-
       <header class="shrink-0 bg-cream/95 backdrop-blur border-b border-line/80">
         <div class="px-4 pt-5 pb-3 flex items-center gap-3">
           <button id="chatBack" class="w-9 h-9 -ml-1 rounded-full flex items-center justify-center active:scale-95 transition">
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
           </button>
-
           <div class="relative shrink-0">
             <img id="chatAvatar" class="w-10 h-10 rounded-full object-cover bg-hearth-100" alt="" />
             <span id="chatOnlineDot" class="absolute -bottom-0 -right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-cream"></span>
           </div>
-
           <div class="flex-1 min-w-0">
             <p id="chatName" class="text-[15px] font-bold leading-tight truncate">Match</p>
             <p id="chatStatus" class="text-[12px] text-emerald-600 font-medium">Online now</p>
           </div>
-
           <button id="videoCallBtn" class="w-9 h-9 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition">
             <svg class="w-[19px] h-[19px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2.5" y="6.5" width="13" height="11" rx="3"/><path d="M15.5 10.5l5-3v9l-5-3z"/>
             </svg>
           </button>
-
           <button id="voiceCallBtn" class="w-9 h-9 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition">
             <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 3.5h3l1.8 4.2-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4.2 1.8v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 3 5.7 2 2 0 0 1 5 3.5z"/>
             </svg>
           </button>
-
           <button id="chatOptionsBtn" class="w-9 h-9 -mr-1 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition">
             <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/>
@@ -354,10 +483,8 @@
               <path d="M21 11.5l-8.4 8.4a5.3 5.3 0 0 1-7.5-7.5l8.5-8.5a3.5 3.5 0 0 1 5 5l-8.5 8.5a1.8 1.8 0 0 1-2.5-2.5l7.8-7.8"/>
             </svg>
           </button>
-
           <textarea id="chatInput" rows="1" placeholder="Message…"
             class="flex-1 resize-none max-h-28 rounded-[22px] bg-white border border-line px-4 py-3 text-[14.5px] leading-snug outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition"></textarea>
-
           <button id="sendBtn" class="w-11 h-11 shrink-0 rounded-full bg-hearth shadow-amber flex items-center justify-center active:scale-95 transition">
             <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
               <path d="M3.3 3.2l17.4 8.1a.8.8 0 0 1 0 1.4L3.3 20.8a.8.8 0 0 1-1.1-.9l1.5-6.2 9.1-.7-9.1-.7-1.5-6.2a.8.8 0 0 1 1.1-.9z"/>
@@ -371,7 +498,7 @@
 
 
   <!-- ============================================================
-       SCREEN 6 — PAYWALL
+       SCREEN 7 — PAYWALL
        ============================================================ -->
   <section id="screen-paywall" class="screen">
     <div class="fixed inset-0 z-50 mx-auto max-w-app bg-cream overflow-y-auto no-scrollbar">
@@ -455,15 +582,123 @@
 
 
   <!-- ============================================================
-       BOTTOM NAV
+       BOTTOM NAV (5 tabs)
        ============================================================ -->
   <nav id="bottomNav"
     class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 w-full max-w-app bg-white/95 backdrop-blur border-t border-line/80 shadow-nav hidden"
     style="padding-bottom: env(safe-area-inset-bottom);">
-    <div class="grid grid-cols-4 h-[62px]" id="navItems"></div>
+    <div class="grid grid-cols-5 h-[62px]" id="navItems"></div>
   </nav>
 
 </div><!-- /#app -->
+
+
+<!-- ============================================================
+     EDIT PROFILE SHEET
+     ============================================================ -->
+<div id="editProfileSheet" class="hidden fixed inset-0 z-[75] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
+  <div id="editProfilePanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden flex flex-col" style="max-height: 92vh;">
+    <div class="shrink-0 px-5 pt-4 pb-3 border-b border-line/70">
+      <div class="w-10 h-1 rounded-full bg-line mx-auto mb-3"></div>
+      <div class="flex items-center justify-between">
+        <button id="editProfileCancel" class="text-[14px] font-semibold text-muted active:opacity-70">Cancel</button>
+        <h3 class="text-[15px] font-bold">Edit profile</h3>
+        <button id="editProfileSave" class="text-[14px] font-extrabold text-hearth-600 active:opacity-70">Save</button>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto no-scrollbar px-5 py-5" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));">
+
+      <!-- Avatar -->
+      <div class="flex flex-col items-center mb-6">
+        <img id="editAvatarPreview" class="w-[96px] h-[96px] rounded-full object-cover border-4 border-white shadow-soft bg-hearth-100"
+             alt="" data-fallback="You" />
+        <p class="text-[11.5px] text-muted mt-2">Avatar preview</p>
+      </div>
+
+      <!-- Name -->
+      <label class="block mb-4">
+        <span class="text-[12px] font-semibold text-muted">Name</span>
+        <input id="editName" type="text" maxlength="60" placeholder="Your name"
+          class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
+      </label>
+
+      <!-- Age + Gender -->
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <label class="block">
+          <span class="text-[12px] font-semibold text-muted">Age</span>
+          <input id="editAge" type="number" min="18" max="120" placeholder="29"
+            class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
+        </label>
+        <label class="block">
+          <span class="text-[12px] font-semibold text-muted">Gender</span>
+          <select id="editGender"
+            class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-3 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition">
+            <option value="">Select</option>
+            <option value="woman">Woman</option>
+            <option value="man">Man</option>
+            <option value="non-binary">Non-binary</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- City -->
+      <label class="block mb-4">
+        <span class="text-[12px] font-semibold text-muted">City</span>
+        <input id="editCity" type="text" maxlength="80" placeholder="Addis Ababa"
+          class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
+      </label>
+
+      <!-- Bio -->
+      <label class="block mb-4">
+        <span class="text-[12px] font-semibold text-muted">Bio</span>
+        <textarea id="editBio" rows="4" maxlength="500" placeholder="Tell people a little about yourself…"
+          class="mt-1.5 w-full rounded-[14px] bg-white border border-line px-4 py-3 text-[14.5px] leading-snug outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition resize-none"></textarea>
+        <span id="editBioCount" class="block text-[11px] text-muted text-right mt-1">0 / 500</span>
+      </label>
+
+      <!-- Tags -->
+      <label class="block mb-4">
+        <span class="text-[12px] font-semibold text-muted">Interests / tags</span>
+        <span class="block text-[11px] text-muted mt-0.5">Up to 8, comma-separated. E.g. Music, Baking, Cycling</span>
+        <input id="editTags" type="text" placeholder="Music, Baking, Cycling"
+          class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
+      </label>
+
+      <!-- Avatar URL -->
+      <label class="block mb-3">
+        <span class="text-[12px] font-semibold text-muted">Avatar image URL</span>
+        <span class="block text-[11px] text-muted mt-0.5">Paste a link to a photo (https://…)</span>
+        <input id="editAvatarUrl" type="url" placeholder="https://example.com/me.jpg"
+          class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
+      </label>
+
+      <p id="editProfileError" class="hidden text-[12.5px] text-red-600 bg-red-50 border border-red-100 rounded-[12px] px-3 py-2.5 mt-3"></p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     INFO SHEET (About / Privacy / Help / Terms)
+     ============================================================ -->
+<div id="infoSheet" class="hidden fixed inset-0 z-[75] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
+  <div id="infoPanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden flex flex-col" style="max-height: 88vh;">
+    <div class="shrink-0 px-5 pt-4 pb-3 border-b border-line/70">
+      <div class="w-10 h-1 rounded-full bg-line mx-auto mb-3"></div>
+      <div class="flex items-center justify-between">
+        <div class="w-16"></div>
+        <h3 id="infoTitle" class="text-[15px] font-bold">About</h3>
+        <button id="infoClose" class="text-[14px] font-semibold text-hearth-600 active:opacity-70 w-16 text-right">Done</button>
+      </div>
+    </div>
+
+    <div id="infoBody" class="flex-1 overflow-y-auto no-scrollbar px-5 py-5" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+</div>
 
 
 <!-- ============================================================
@@ -472,7 +707,6 @@
 <div id="matchModal" class="hidden fixed inset-0 z-[60] items-center justify-center p-6 bg-charcoal/70 backdrop-blur-sm overlay">
   <div class="w-full max-w-[360px] bg-cream rounded-[24px] p-6 text-center pop shadow-card">
     <p class="text-[11px] font-extrabold uppercase tracking-[0.16em] text-hearth-600">It's a match</p>
-
     <div class="relative flex items-center justify-center gap-1 my-5">
       <img id="matchAvatarMe" class="w-[86px] h-[86px] rounded-full object-cover border-4 border-cream bg-hearth-100 -mr-3 z-10" alt="" />
       <img id="matchAvatarThem" class="w-[86px] h-[86px] rounded-full object-cover border-4 border-cream bg-hearth-100 -ml-3" alt="" />
@@ -482,10 +716,8 @@
         </svg>
       </span>
     </div>
-
     <h3 class="text-[20px] font-extrabold tracking-tight">You and <span id="matchModalName">them</span> liked each other</h3>
     <p class="text-[13px] text-muted mt-2 leading-relaxed">Messaging is always free. Start with something you both care about.</p>
-
     <button id="matchSayHi" class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
       Send a message
     </button>
@@ -522,20 +754,16 @@
      ============================================================ -->
 <div id="ussdModal" class="hidden fixed inset-0 z-[65] items-center justify-center p-6 bg-charcoal/70 backdrop-blur-sm overlay">
   <div class="w-full max-w-[380px] bg-cream rounded-[24px] p-6 text-center pop shadow-card">
-
-    <!-- Step 1 — instructions -->
     <div id="ussdStep1">
       <div class="w-16 h-16 mx-auto rounded-full bg-hearth shadow-amber flex items-center justify-center mb-4">
         <svg class="w-8 h-8 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M5 3.5h3l1.8 4.2-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4.2 1.8v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 3 5.7 2 2 0 0 1 5 3.5z"/>
         </svg>
       </div>
-
       <h3 class="text-[21px] font-extrabold tracking-tight">Pay via Tele Birr</h3>
       <p class="text-[13.5px] text-muted mt-2 leading-relaxed">
         The dialer should have opened with the payment code. Press <b>Call</b> on your phone to complete the payment, then come back and tap the button below.
       </p>
-
       <div class="mt-5 bg-white rounded-card border border-line p-4 text-left">
         <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted mb-2">Dial this code</p>
         <p id="ussdCodeDisplay" class="font-mono text-[15px] font-bold text-charcoal break-all"></p>
@@ -543,24 +771,17 @@
           Copy code
         </button>
       </div>
-
-      <button id="ussdDialAgainBtn"
-        class="mt-5 w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
+      <button id="ussdDialAgainBtn" class="mt-5 w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
         Open dialer again
       </button>
-
-      <button id="ussdConfirmBtn"
-        class="mt-2.5 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
+      <button id="ussdConfirmBtn" class="mt-2.5 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
         I've paid — Unlock Member+
       </button>
-
-      <button id="ussdCancelBtn"
-        class="mt-2.5 w-full py-3 rounded-full font-semibold text-[13.5px] text-muted active:scale-[.98] transition">
+      <button id="ussdCancelBtn" class="mt-2.5 w-full py-3 rounded-full font-semibold text-[13.5px] text-muted active:scale-[.98] transition">
         Cancel
       </button>
     </div>
 
-    <!-- Step 2 — verifying -->
     <div id="ussdStep2" class="hidden">
       <div class="w-16 h-16 mx-auto rounded-full bg-hearth shadow-amber flex items-center justify-center mb-4">
         <svg class="w-8 h-8 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
@@ -570,7 +791,6 @@
       <h3 class="text-[21px] font-extrabold tracking-tight">Unlocking Member+…</h3>
       <p class="text-[13.5px] text-muted mt-2">Just a moment.</p>
     </div>
-
   </div>
 </div>
 
@@ -580,18 +800,15 @@
      ============================================================ -->
 <div id="callOverlay" class="hidden fixed inset-0 z-[80] bg-charcoal text-white">
   <div class="relative w-full h-full max-w-app mx-auto overflow-hidden">
-
     <div id="callVideoLayer" class="absolute inset-0">
       <img id="callPartnerVideo" class="w-full h-full object-cover opacity-80" alt="" />
       <div class="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/85"></div>
     </div>
-
     <div id="callSelfPreview"
       class="hidden absolute top-[68px] right-4 w-[112px] h-[160px] rounded-2xl overflow-hidden border-2 border-white/30 shadow-card bg-hearth-100">
       <img id="callSelfVideo" class="w-full h-full object-cover" alt="" />
       <span class="absolute bottom-1.5 left-2 text-[10px] font-bold text-white/85 drop-shadow">You</span>
     </div>
-
     <div id="callAvatarWrap" class="hidden absolute inset-0 flex items-center justify-center">
       <div class="relative">
         <div class="w-[152px] h-[152px] rounded-full overflow-hidden border-4 border-white/20 call-pulse">
@@ -599,14 +816,12 @@
         </div>
       </div>
     </div>
-
     <div class="absolute top-0 left-0 right-0 px-6 pt-7 text-center pointer-events-none">
       <p id="callKindLabel" class="text-[11.5px] font-bold uppercase tracking-[0.16em] text-white/70">Voice call</p>
       <h2 id="callPartnerName" class="text-[24px] font-extrabold mt-2 tracking-tight">Match</h2>
       <p id="callStatusText" class="text-[13.5px] text-white/80 mt-2">Calling…</p>
       <p id="callTimer" class="hidden text-[13.5px] font-mono text-white/90 mt-1">00:00</p>
     </div>
-
     <div class="absolute bottom-0 left-0 right-0 px-6 pb-12 pt-6">
       <div class="flex items-center justify-center gap-4 mb-8">
         <button id="callMuteBtn" class="call-ctl" aria-label="Mute">
@@ -616,15 +831,12 @@
             <path d="M12 17.5V21"/>
           </svg>
           <svg class="w-6 h-6 icon-mic-off hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 3l18 18"/>
-            <path d="M9 5a3 3 0 0 1 6 0v6"/>
+            <path d="M3 3l18 18"/><path d="M9 5a3 3 0 0 1 6 0v6"/>
             <path d="M15 15a3 3 0 0 1-6 0V9"/>
             <path d="M5.5 11a6.5 6.5 0 0 0 10.3 5.2"/>
-            <path d="M19 12a6.5 6.5 0 0 1-.7 3"/>
-            <path d="M12 17.5V21"/>
+            <path d="M19 12a6.5 6.5 0 0 1-.7 3"/><path d="M12 17.5V21"/>
           </svg>
         </button>
-
         <button id="callSpeakerBtn" class="call-ctl" aria-label="Speaker">
           <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 9.5h3l4-3.5v12l-4-3.5H4z"/>
@@ -632,7 +844,6 @@
             <path d="M18 6a8.5 8.5 0 0 1 0 12"/>
           </svg>
         </button>
-
         <button id="callVideoToggleBtn" class="call-ctl" aria-label="Toggle camera">
           <svg class="w-6 h-6 icon-cam-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2.5" y="6.5" width="13" height="11" rx="3"/><path d="M15.5 10.5l5-3v9l-5-3z"/>
@@ -644,7 +855,6 @@
           </svg>
         </button>
       </div>
-
       <div class="flex justify-center">
         <button id="callEndBtn"
           class="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-amber active:scale-95 transition">
@@ -664,7 +874,6 @@
 <div id="chatOptionsSheet" class="hidden fixed inset-0 z-[70] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
   <div id="chatOptionsPanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
     <div class="w-10 h-1 rounded-full bg-line mx-auto mt-3 mb-2"></div>
-
     <div class="px-5 py-4">
       <button data-opt="profile" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
         <span class="w-10 h-10 rounded-full bg-hearth-50 flex items-center justify-center">
@@ -675,7 +884,6 @@
         <span class="text-[14.5px] font-semibold text-left flex-1">View profile</span>
         <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
       </button>
-
       <button data-opt="mute" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
         <span class="w-10 h-10 rounded-full bg-hearth-50 flex items-center justify-center">
           <svg style="width:18px;height:18px" class="text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -686,7 +894,6 @@
         <span id="muteOptLabel" class="text-[14.5px] font-semibold text-left flex-1">Mute notifications</span>
         <span id="muteOptBadge" class="hidden text-[11px] font-bold text-hearth-600 bg-hearth-50 px-2 py-0.5 rounded-full">On</span>
       </button>
-
       <button data-opt="report" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
         <span class="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
           <svg style="width:18px;height:18px" class="text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -696,7 +903,6 @@
         <span class="text-[14.5px] font-semibold text-left flex-1">Report</span>
         <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
       </button>
-
       <button data-opt="unmatch" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
         <span class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
           <svg style="width:18px;height:18px" class="text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -707,10 +913,8 @@
         <span class="text-[14.5px] font-semibold text-left flex-1 text-red-600">Unmatch</span>
       </button>
     </div>
-
     <div class="px-5 pt-1 pb-5">
-      <button id="chatOptionsCancel"
-        class="w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
+      <button id="chatOptionsCancel" class="w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
         Cancel
       </button>
     </div>
@@ -724,7 +928,6 @@
 <div id="partnerProfileSheet" class="hidden fixed inset-0 z-[75] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
   <div id="partnerProfilePanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
     <div class="w-10 h-1 rounded-full bg-line mx-auto mt-3 mb-3"></div>
-
     <div class="px-5 pb-5 max-h-[78vh] overflow-y-auto no-scrollbar">
       <div class="flex items-start gap-4">
         <img id="profileSheetAvatar" class="w-20 h-20 rounded-2xl object-cover bg-hearth-100 shrink-0" alt="" />
@@ -734,14 +937,11 @@
           <div id="profileSheetTags" class="flex flex-wrap gap-1.5 mt-2.5"></div>
         </div>
       </div>
-
       <div class="mt-5">
         <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted mb-2">About</p>
         <p id="profileSheetBio" class="text-[14px] leading-relaxed text-charcoal whitespace-pre-wrap">No bio yet.</p>
       </div>
-
-      <button id="profileSheetClose"
-        class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
+      <button id="profileSheetClose" class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
         Close
       </button>
     </div>
@@ -762,13 +962,10 @@
     </div>
     <h3 id="confirmTitle" class="text-[18px] font-extrabold tracking-tight">Are you sure?</h3>
     <p id="confirmBody" class="text-[13px] text-muted mt-2 leading-relaxed">This can't be undone.</p>
-
-    <button id="confirmYes"
-      class="mt-6 w-full py-3.5 rounded-full bg-red-500 text-white font-extrabold text-[15px] active:scale-[.98] transition">
+    <button id="confirmYes" class="mt-6 w-full py-3.5 rounded-full bg-red-500 text-white font-extrabold text-[15px] active:scale-[.98] transition">
       Yes, continue
     </button>
-    <button id="confirmNo"
-      class="mt-2.5 w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
+    <button id="confirmNo" class="mt-2.5 w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
       Cancel
     </button>
   </div>
@@ -798,7 +995,7 @@ const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || '';
 const API_BASE          = window.HEARTHSIDE_API    || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('[hearthside] Missing Supabase config. /config.js returned empty values.');
+  console.error('[hearthside] Missing Supabase config.');
 }
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -808,9 +1005,6 @@ const PLANS = {
   yearly:  { plan_type: 'yearly',  amount_etb: 4500, label: 'Member+ Yearly'  },
 };
 
-/* Tele Birr USSD codes.
- * Format: *127*2*<receiving-phone>*<amount>#
- * Change TELEBIRR_RECEIVING_PHONE if the number changes. */
 const TELEBIRR_RECEIVING_PHONE = '0906151003';
 const USSD_CODES = {
   monthly: `*127*2*${TELEBIRR_RECEIVING_PHONE}*450#`,
@@ -847,6 +1041,7 @@ const state = {
   call: null,
   mutedMatches: new Set(),
   pendingUssd: null,
+  editingProfile: false,
 };
 
 /* ============================================================
@@ -1017,6 +1212,8 @@ async function handleSignOut() {
   closeChatOptions();
   closePartnerProfile();
   closeUssdModal();
+  closeEditProfile();
+  closeInfoSheet();
   $$('.screen').forEach((s) => s.classList.remove('active'));
   $('#screen-auth').classList.add('active');
   $('#bottomNav').classList.add('hidden');
@@ -1030,6 +1227,7 @@ const NAV = [
   { key: 'likes',    label: 'Likes' },
   { key: 'matches',  label: 'Matches' },
   { key: 'messages', label: 'Messages' },
+  { key: 'profile',  label: 'Profile' },
 ];
 
 const NAV_ICONS = {
@@ -1037,15 +1235,16 @@ const NAV_ICONS = {
   likes:    `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7-4.4-8.8-8.6C1.5 8.3 3.3 5.5 6.4 5.5c1.9 0 3.2 1 4 2.2l1.6 2.1 1.6-2.1c.8-1.2 2.1-2.2 4-2.2 3.1 0 4.9 2.8 3.2 6.4C19 16.1 12 20.5 12 20.5z"/></svg>`,
   matches:  `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3.2"/><circle cx="17" cy="9.5" r="2.6"/><path d="M3.5 19c.6-3 2.9-4.8 5.5-4.8s4.9 1.8 5.5 4.8"/><path d="M16.2 13.6c2 .2 3.6 1.6 4.3 3.9"/></svg>`,
   messages: `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 0 1-12.3 7.6L3.5 21l1.4-5.2A8.5 8.5 0 1 1 21 12z"/></svg>`,
+  profile:  `<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.6-3.6 3.7-5.8 7.5-5.8s6.9 2.2 7.5 5.8"/></svg>`,
 };
 
-const SCREENS_WITH_NAV = ['discover', 'likes', 'matches', 'messages'];
+const SCREENS_WITH_NAV = ['discover', 'likes', 'matches', 'messages', 'profile'];
 
 function renderNav() {
   $('#navItems').innerHTML = NAV.map((item) => `
-    <button data-nav="${item.key}" class="nav-btn flex flex-col items-center justify-center gap-1 transition">
+    <button data-nav="${item.key}" class="nav-btn flex flex-col items-center justify-center gap-0.5 transition">
       <span class="nav-icon">${NAV_ICONS[item.key]}</span>
-      <span class="text-[10.5px] font-semibold nav-label">${item.label}</span>
+      <span class="text-[10px] font-semibold nav-label">${item.label}</span>
     </button>
   `).join('');
   $$('#navItems .nav-btn').forEach((btn) => btn.addEventListener('click', () => showScreen(btn.dataset.nav)));
@@ -1075,6 +1274,7 @@ function showScreen(name) {
   if (name === 'likes')    renderLikes();
   if (name === 'matches')  renderMatches();
   if (name === 'messages') renderThreads();
+  if (name === 'profile')  renderProfile();
 
   paintNav();
   window.scrollTo({ top: 0 });
@@ -1101,7 +1301,302 @@ function renderLikesMeter() {
 }
 
 /* ============================================================
- * 7. DISCOVER
+ * 7. PROFILE
+ * ========================================================== */
+async function renderProfile() {
+  const p = state.myProfile || {};
+
+  $('#profileName').textContent = `${p.name || 'You'}${p.age ? `, ${p.age}` : ''}`;
+
+  const metaParts = [];
+  if (p.city) metaParts.push(p.city);
+  if (p.gender) metaParts.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
+  $('#profileMetaLine').textContent = metaParts.join(' · ') || 'Add your city and details';
+
+  $('#profileBio').textContent = p.bio || 'No bio yet. Tap Edit profile to add one.';
+
+  $('#profileTags').innerHTML = (p.tags || []).length
+    ? (p.tags || []).map((t) =>
+        `<span class="px-2.5 py-1 rounded-full bg-hearth-50 text-hearth-600 text-[11px] font-semibold">${esc(t)}</span>`
+      ).join('')
+    : '<span class="text-[11.5px] text-muted">No interests yet</span>';
+
+  // Avatar & cover
+  const avatarUrl = p.avatar_url || '';
+  $('#profileAvatar').src = avatarUrl;
+  $('#profileAvatar').dataset.fallback = p.name || 'You';
+  $('#profileCoverImg').src = avatarUrl;
+  $('#profileCoverImg').dataset.fallback = p.name || 'You';
+  wireFallbacks($('#screen-profile'));
+
+  // Premium badge
+  $('#profilePremiumBadge').classList.toggle('hidden', !state.isPremium);
+  $('#profileMembershipSub').textContent = state.isPremium ? 'Member+ active' : 'Free plan';
+
+  // Update the async profile if we don't have it yet
+  if (!state.myProfile) {
+    try {
+      const { profile } = await api('/api/profiles/me');
+      state.myProfile = profile;
+      renderProfile();
+    } catch (err) {
+      console.warn('[profile] Could not fetch:', err.message);
+    }
+  }
+}
+
+/* ---------- Edit profile sheet ---------- */
+function openEditProfile() {
+  const p = state.myProfile || {};
+  $('#editName').value = p.name || '';
+  $('#editAge').value = p.age ?? '';
+  $('#editGender').value = p.gender || '';
+  $('#editCity').value = p.city || '';
+  $('#editBio').value = p.bio || '';
+  $('#editTags').value = (p.tags || []).join(', ');
+  $('#editAvatarUrl').value = p.avatar_url || '';
+
+  updateEditAvatarPreview();
+  updateBioCount();
+  hideEditError();
+
+  const sheet = $('#editProfileSheet');
+  const panel = $('#editProfilePanel');
+  panel.classList.remove('sheet-out');
+  panel.classList.add('sheet-in');
+  sheet.classList.remove('hidden');
+  sheet.classList.add('flex');
+}
+
+function closeEditProfile() {
+  const sheet = $('#editProfileSheet');
+  const panel = $('#editProfilePanel');
+  if (!sheet || sheet.classList.contains('hidden')) return;
+  panel.classList.remove('sheet-in');
+  panel.classList.add('sheet-out');
+  setTimeout(() => {
+    sheet.classList.add('hidden');
+    sheet.classList.remove('flex');
+    panel.classList.remove('sheet-out');
+  }, 200);
+}
+
+function updateEditAvatarPreview() {
+  const url = $('#editAvatarUrl').value.trim();
+  const img = $('#editAvatarPreview');
+  img.dataset.fallback = $('#editName').value.trim() || 'You';
+  if (url) {
+    img.src = url;
+  } else {
+    // Show letter fallback
+    const initial = ($('#editName').value.trim() || 'You').charAt(0).toUpperCase();
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">` +
+      `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+      `<stop offset="0" stop-color="#F5B041"/><stop offset="1" stop-color="#E89B2A"/>` +
+      `</linearGradient></defs><rect width="200" height="200" fill="url(#g)"/>` +
+      `<text x="50%" y="55%" font-family="Inter,sans-serif" font-size="80" font-weight="700" ` +
+      `fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initial}</text></svg>`;
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+}
+
+function updateBioCount() {
+  const len = ($('#editBio').value || '').length;
+  $('#editBioCount').textContent = `${len} / 500`;
+}
+
+function showEditError(msg) {
+  const el = $('#editProfileError');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+function hideEditError() {
+  $('#editProfileError').classList.add('hidden');
+}
+
+async function saveEditProfile() {
+  hideEditError();
+
+  const name = $('#editName').value.trim();
+  const age = $('#editAge').value;
+  const gender = $('#editGender').value;
+  const city = $('#editCity').value.trim();
+  const bio = $('#editBio').value.trim();
+  const tagsRaw = $('#editTags').value.trim();
+  const avatar_url = $('#editAvatarUrl').value.trim();
+
+  if (!name) return showEditError('Please enter your name.');
+  if (age && (parseInt(age, 10) < 18)) return showEditError('You must be 18 or older.');
+
+  const tags = tagsRaw
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+
+  const saveBtn = $('#editProfileSave');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+
+  try {
+    const payload = {
+      name,
+      age: age ? parseInt(age, 10) : undefined,
+      gender: gender || undefined,
+      city,
+      bio,
+      tags,
+      avatar_url,
+    };
+
+    const { profile } = await api('/api/profiles/me', {
+      method: 'PUT',
+      body: payload,
+    });
+
+    state.myProfile = profile;
+    renderProfile();
+
+    closeEditProfile();
+    toast('Profile updated');
+  } catch (err) {
+    console.error('[edit profile]', err);
+    showEditError(err.data?.detail || err.data?.error || err.message || 'Could not save.');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
+  }
+}
+
+/* ---------- Info sheet ---------- */
+const INFO_CONTENT = {
+  about: {
+    title: 'About Hearthside',
+    html: `
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-hearth shadow-amber flex items-center justify-center mb-3">
+          <svg class="w-8 h-8 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7.5-4.7-9.4-9.2C1.1 8.2 3 5 6.3 5c2 0 3.4 1.1 4.2 2.3l1.5 2 1.5-2C14.3 6.1 15.7 5 17.7 5 21 5 22.9 8.2 21.4 11.8 19.5 16.3 12 21 12 21z"/>
+          </svg>
+        </div>
+        <h2 class="text-[20px] font-extrabold tracking-tight">Hearthside</h2>
+        <p class="text-[13px] text-muted mt-1">Version 1.0.0</p>
+      </div>
+      <div class="space-y-4 text-[14px] leading-relaxed text-charcoal">
+        <p>Hearthside is a warm, mobile-first dating app for meaningful connection — not endless swiping.</p>
+        <p>Our mission: help people find <b>real relationships</b> rooted in kindness, curiosity, and shared values.</p>
+        <p class="text-muted text-[13px]">Built with care in Addis Ababa. We'd love your feedback.</p>
+      </div>
+      <div class="mt-6 bg-hearth-50 rounded-card p-4 border border-hearth-200/70">
+        <p class="text-[12.5px] text-hearth-600 font-semibold text-center">Made for you, with love.</p>
+      </div>
+    `,
+  },
+  privacy: {
+    title: 'Privacy & safety',
+    html: `
+      <div class="space-y-5 text-[14px] leading-relaxed text-charcoal">
+        <div>
+          <h3 class="text-[15px] font-bold mb-1.5">Your data</h3>
+          <p class="text-muted text-[13.5px]">We store only what's needed to run Hearthside: your profile details, likes, matches, and messages. We never sell your data.</p>
+        </div>
+        <div>
+          <h3 class="text-[15px] font-bold mb-1.5">Location</h3>
+          <p class="text-muted text-[13.5px]">Your approximate distance is shown to other users, but your exact coordinates are never revealed.</p>
+        </div>
+        <div>
+          <h3 class="text-[15px] font-bold mb-1.5">Blocking & reporting</h3>
+          <p class="text-muted text-[13.5px]">You can unmatch or report anyone from the chat options menu. Reports are reviewed by our team.</p>
+        </div>
+        <div>
+          <h3 class="text-[15px] font-bold mb-1.5">Delete your account</h3>
+          <p class="text-muted text-[13.5px]">Sign out and contact us at support@hearthside.app to permanently delete your account.</p>
+        </div>
+      </div>
+    `,
+  },
+  help: {
+    title: 'Help centre',
+    html: `
+      <div class="space-y-4 text-[14px] leading-relaxed text-charcoal">
+        <div class="bg-white rounded-card border border-line p-4">
+          <h3 class="text-[14.5px] font-bold mb-1">How do I get more matches?</h3>
+          <p class="text-muted text-[13.5px] mt-1">Complete your profile, add a clear photo, and include interests. Member+ users appear higher in discovery.</p>
+        </div>
+        <div class="bg-white rounded-card border border-line p-4">
+          <h3 class="text-[14.5px] font-bold mb-1">How do I pay for Member+?</h3>
+          <p class="text-muted text-[13.5px] mt-1">Tap "Unlock with Member+" on the Likes screen or paywall. Choose your plan, then complete the Tele Birr USSD payment.</p>
+        </div>
+        <div class="bg-white rounded-card border border-line p-4">
+          <h3 class="text-[14.5px] font-bold mb-1">Is messaging really free?</h3>
+          <p class="text-muted text-[13.5px] mt-1">Yes. Messaging with your matches is always free — forever. Member+ only adds discovery features.</p>
+        </div>
+        <div class="bg-white rounded-card border border-line p-4">
+          <h3 class="text-[14.5px] font-bold mb-1">Still stuck?</h3>
+          <p class="text-muted text-[13.5px] mt-1">Email us at support@hearthside.app and we'll help within 24 hours.</p>
+        </div>
+      </div>
+    `,
+  },
+  terms: {
+    title: 'Terms & privacy',
+    html: `
+      <div class="space-y-4 text-[13.5px] leading-relaxed text-charcoal">
+        <h3 class="text-[15px] font-bold">1. Eligibility</h3>
+        <p class="text-muted">You must be at least 18 years old to use Hearthside.</p>
+
+        <h3 class="text-[15px] font-bold">2. Your account</h3>
+        <p class="text-muted">You're responsible for keeping your password secure and for all activity on your account.</p>
+
+        <h3 class="text-[15px] font-bold">3. Community</h3>
+        <p class="text-muted">Be kind. No harassment, hate speech, impersonation, or illegal activity. We may remove accounts that break these rules.</p>
+
+        <h3 class="text-[15px] font-bold">4. Payments</h3>
+        <p class="text-muted">Member+ subscriptions are non-refundable once activated. Cancel anytime from the app.</p>
+
+        <h3 class="text-[15px] font-bold">5. Privacy</h3>
+        <p class="text-muted">We collect only what's needed to run the service and never sell your data. See Privacy & safety for details.</p>
+
+        <h3 class="text-[15px] font-bold">6. Contact</h3>
+        <p class="text-muted">Questions? support@hearthside.app</p>
+
+        <p class="text-[12px] text-muted/70 mt-6">Last updated: January 2026</p>
+      </div>
+    `,
+  },
+};
+
+function openInfoSheet(key) {
+  const content = INFO_CONTENT[key];
+  if (!content) return;
+
+  $('#infoTitle').textContent = content.title;
+  $('#infoBody').innerHTML = content.html;
+
+  const sheet = $('#infoSheet');
+  const panel = $('#infoPanel');
+  panel.classList.remove('sheet-out');
+  panel.classList.add('sheet-in');
+  sheet.classList.remove('hidden');
+  sheet.classList.add('flex');
+}
+
+function closeInfoSheet() {
+  const sheet = $('#infoSheet');
+  const panel = $('#infoPanel');
+  if (!sheet || sheet.classList.contains('hidden')) return;
+  panel.classList.remove('sheet-in');
+  panel.classList.add('sheet-out');
+  setTimeout(() => {
+    sheet.classList.add('hidden');
+    sheet.classList.remove('flex');
+    panel.classList.remove('sheet-out');
+  }, 200);
+}
+
+/* ============================================================
+ * 8. DISCOVER
  * ========================================================== */
 async function loadDeck() {
   let coords = null;
@@ -1145,18 +1640,15 @@ function cardHTML(profile, isTop) {
            alt="${esc(profile.name)}"
            class="absolute inset-0 w-full h-full object-cover pointer-events-none" draggable="false" />
       <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/5 pointer-events-none"></div>
-
       ${profile.is_premium ? `
         <span class="absolute top-4 left-4 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide">
           <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
           Member+
         </span>` : ''}
-
       ${distance ? `
         <span class="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur text-white text-[11.5px] font-semibold">
           ${esc(distance)}
         </span>` : ''}
-
       <div class="absolute bottom-0 left-0 right-0 p-5 text-white pointer-events-none">
         <h2 class="text-[26px] font-extrabold tracking-[-0.02em] leading-tight">
           ${esc(profile.name)}${profile.age ? `, ${esc(profile.age)}` : ''}
@@ -1299,7 +1791,7 @@ function registerMatch(partner, matchRow) {
 }
 
 /* ============================================================
- * 8. MATCH MODAL
+ * 9. MATCH MODAL
  * ========================================================== */
 let pendingMatch = null;
 
@@ -1322,7 +1814,7 @@ function hideMatchModal() {
 }
 
 /* ============================================================
- * 9. LIKES BANNER
+ * 10. LIKES BANNER
  * ========================================================== */
 function updateLikesBanner() {
   const count = Math.max(state.likesYouCount, state.matchedProfileIds.size);
@@ -1332,7 +1824,7 @@ function updateLikesBanner() {
 }
 
 /* ============================================================
- * 10. LIKES SCREEN
+ * 11. LIKES SCREEN
  * ========================================================== */
 async function renderLikes() {
   const locked = !state.isPremium;
@@ -1412,7 +1904,7 @@ async function renderLikes() {
 }
 
 /* ============================================================
- * 11. MATCHES
+ * 12. MATCHES
  * ========================================================== */
 async function renderMatches() {
   const data = await safeApi('/api/matches', {}, { matches: [] });
@@ -1458,7 +1950,7 @@ async function renderMatches() {
 }
 
 /* ============================================================
- * 12. THREADS
+ * 13. THREADS
  * ========================================================== */
 async function renderThreads() {
   if (!state.matches.length) {
@@ -1513,7 +2005,7 @@ async function renderThreads() {
 }
 
 /* ============================================================
- * 13. CHAT
+ * 14. CHAT
  * ========================================================== */
 async function openChat(matchId) {
   const match = state.matches.find((m) => m.id === matchId);
@@ -1616,7 +2108,7 @@ function subscribeToMatch(matchId) {
 }
 
 /* ============================================================
- * 14. CALLS
+ * 15. CALLS
  * ========================================================== */
 function openCall(kind) {
   const match = state.matches.find((m) => m.id === state.activeMatchId);
@@ -1744,7 +2236,7 @@ function toggleCallVideo() {
 }
 
 /* ============================================================
- * 15. CHAT OPTIONS SHEET
+ * 16. CHAT OPTIONS SHEET
  * ========================================================== */
 function openChatOptions() {
   const sheet = $('#chatOptionsSheet');
@@ -1778,39 +2270,29 @@ function handleChatOption(opt) {
       closeChatOptions();
       setTimeout(openPartnerProfile, 220);
       break;
-
     case 'mute': {
       const id = state.activeMatchId;
-      if (state.mutedMatches.has(id)) {
-        state.mutedMatches.delete(id);
-        toast('Notifications unmuted');
-      } else {
-        state.mutedMatches.add(id);
-        toast('Notifications muted');
-      }
+      if (state.mutedMatches.has(id)) { state.mutedMatches.delete(id); toast('Notifications unmuted'); }
+      else { state.mutedMatches.add(id); toast('Notifications muted'); }
       closeChatOptions();
       break;
     }
-
     case 'report':
       closeChatOptions();
       setTimeout(() => {
         openConfirm({
-          icon: 'flag',
-          title: 'Report this user?',
+          icon: 'flag', title: 'Report this user?',
           body: 'Our team will review the conversation and take action if needed. This user will not be notified.',
           confirmLabel: 'Report',
           onConfirm: () => { toast('Report submitted. Thank you.'); closeConfirm(); },
         });
       }, 220);
       break;
-
     case 'unmatch':
       closeChatOptions();
       setTimeout(() => {
         openConfirm({
-          icon: 'unmatch',
-          title: 'Unmatch?',
+          icon: 'unmatch', title: 'Unmatch?',
           body: 'This conversation will be removed for both of you. You will no longer see each other in Discover.',
           confirmLabel: 'Unmatch',
           onConfirm: () => doUnmatch(),
@@ -1821,7 +2303,7 @@ function handleChatOption(opt) {
 }
 
 /* ============================================================
- * 16. PARTNER PROFILE SHEET
+ * 17. PARTNER PROFILE SHEET
  * ========================================================== */
 function openPartnerProfile() {
   const match = state.matches.find((m) => m.id === state.activeMatchId);
@@ -1860,7 +2342,7 @@ function closePartnerProfile() {
 }
 
 /* ============================================================
- * 17. CONFIRM MODAL
+ * 18. CONFIRM MODAL
  * ========================================================== */
 let confirmHandler = null;
 
@@ -1871,6 +2353,10 @@ const CONFIRM_ICONS = {
   unmatch: `<svg style="width:26px;height:26px" class="text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 21s-7.5-4.7-9.4-9.2C1.1 8.2 3 5 6.3 5c2 0 3.4 1.1 4.2 2.3l1.5 2 1.5-2C14.3 6.1 15.7 5 17.7 5 21 5 22.9 8.2 21.4 11.8 19.5 16.3 12 21 12 21z"/>
     <path d="M3 3l18 18"/>
+  </svg>`,
+  signout: `<svg style="width:26px;height:26px" class="text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/>
+    <path d="M10 17l-5-5 5-5"/><path d="M4 12h11"/>
   </svg>`,
 };
 
@@ -1894,7 +2380,7 @@ function closeConfirm() {
 }
 
 /* ============================================================
- * 18. UNMATCH
+ * 19. UNMATCH
  * ========================================================== */
 async function doUnmatch() {
   const id = state.activeMatchId;
@@ -1910,15 +2396,12 @@ async function doUnmatch() {
   showScreen('messages');
   toast(`You unmatched ${partnerName}`);
 
-  try {
-    await api(`/api/matches/${id}`, { method: 'DELETE' });
-  } catch (err) {
-    if (err.status !== 404) console.warn('[unmatch] Server sync failed:', err.message);
-  }
+  try { await api(`/api/matches/${id}`, { method: 'DELETE' }); }
+  catch (err) { if (err.status !== 404) console.warn('[unmatch] Server sync failed:', err.message); }
 }
 
 /* ============================================================
- * 19. PAYWALL — USSD flow
+ * 20. PAYWALL — USSD flow
  * ========================================================== */
 function openPaywall() {
   renderPlans();
@@ -1949,17 +2432,13 @@ function renderPlans() {
       check.innerHTML = `<svg class="w-3 h-3 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>`;
       card.style.position = 'relative';
       card.appendChild(check);
-    } else if (!active && check) {
-      check.remove();
-    }
+    } else if (!active && check) { check.remove(); }
   });
   const plan = PLANS[state.selectedPlan];
   $('#payBtnLabel').textContent = `Pay ${plan.amount_etb.toLocaleString('en-US')} ETB via Tele Birr`;
 }
 
-/* ---------- USSD dialing ---------- */
 function dialUssd(code) {
-  // '#' must be URL-encoded as %23 or the browser strips it
   const encoded = code.replace(/#/g, '%23');
   const a = document.createElement('a');
   a.href = `tel:${encoded}`;
@@ -1970,20 +2449,14 @@ function dialUssd(code) {
   document.body.removeChild(a);
 }
 
-/* Main pay button handler */
 function payWithTelebirr() {
   const planType = state.selectedPlan;
-  const plan = PLANS[planType];
   const ussd = USSD_CODES[planType];
-
-  if (!ussd) {
-    toast('Payment code not available for this plan.');
-    return;
-  }
+  if (!ussd) { toast('Payment code not available for this plan.'); return; }
 
   state.pendingUssd = {
     plan_type: planType,
-    amount_etb: plan.amount_etb,
+    amount_etb: PLANS[planType].amount_etb,
     ussd,
     startedAt: Date.now(),
   };
@@ -2010,44 +2483,31 @@ function closeUssdModal() {
   state.pendingUssd = null;
 }
 
-/* Confirm the USSD payment → unlock premium */
 async function confirmUssdPayment() {
   if (!state.pendingUssd) return;
-
   $('#ussdStep1').classList.add('hidden');
   $('#ussdStep2').classList.remove('hidden');
 
   const plan = state.pendingUssd;
 
   try {
-    // 1. Create pending subscription (non-fatal if it fails)
     let txnId = null;
     try {
       const init = await api('/api/payments/telebirr/initiate', {
-        method: 'POST',
-        body: { plan_type: plan.plan_type },
+        method: 'POST', body: { plan_type: plan.plan_type },
       });
       txnId = init?.txn_id || null;
-    } catch (err) {
-      console.warn('[ussd] initiate failed (non-fatal):', err.message);
-    }
+    } catch (err) { console.warn('[ussd] initiate failed (non-fatal):', err.message); }
 
-    // 2. Ask the server to unlock premium
     const confirm = await api('/api/payments/mock-confirm', {
       method: 'POST',
       body: { txn_id: txnId, plan_type: plan.plan_type },
     });
 
-    if (!confirm?.is_premium) {
-      throw new Error(confirm?.detail || 'Server did not confirm premium.');
-    }
+    if (!confirm?.is_premium) throw new Error(confirm?.detail || 'Server did not confirm premium.');
 
-    // 3. Update local state and persist
     await unlockPremium();
-
-    // 4. Hide USSD modal — premium modal shows automatically
     closeUssdModal();
-
   } catch (err) {
     console.error('[ussd confirm]', err);
     $('#ussdStep2').classList.add('hidden');
@@ -2056,7 +2516,6 @@ async function confirmUssdPayment() {
   }
 }
 
-/* Local premium unlock (persists to Supabase as a safety net) */
 async function unlockPremium() {
   state.isPremium = true;
   state.likes.isPremium = true;
@@ -2068,12 +2527,10 @@ async function unlockPremium() {
     const { error } = await supabase
       .from('profiles')
       .update({
-        is_premium: true,
-        daily_likes_used: 0,
+        is_premium: true, daily_likes_used: 0,
         last_like_reset: new Date().toISOString(),
       })
       .eq('id', state.myId);
-
     if (error) throw error;
 
     if (state.myProfile) {
@@ -2081,10 +2538,9 @@ async function unlockPremium() {
       state.myProfile.daily_likes_used = 0;
       state.myProfile.last_like_reset = new Date().toISOString();
     }
-    console.info('[premium] Saved is_premium=true for', state.myId);
   } catch (err) {
     console.error('[premium] Could not persist to Supabase:', err.message);
-    toast('Premium unlocked locally, but failed to save. Please refresh.');
+    toast('Premium unlocked locally, but failed to save.');
   }
 
   const modal = $('#premiumModal');
@@ -2093,7 +2549,7 @@ async function unlockPremium() {
 }
 
 /* ============================================================
- * 20. MISC ACTIONS
+ * 21. MISC ACTIONS
  * ========================================================== */
 function handleFilter() {
   if (!state.isPremium) { toast('Advanced filters are part of Member+.'); openPaywall(); return; }
@@ -2110,7 +2566,7 @@ function handleUndo() {
 }
 
 /* ============================================================
- * 21. EVENT BINDING
+ * 22. EVENT BINDING
  * ========================================================== */
 function bindEvents() {
   // ---- Auth ----
@@ -2130,6 +2586,46 @@ function bindEvents() {
 
   // ---- Likes ----
   $('#likesUnlockBtn').addEventListener('click', openPaywall);
+
+  // ---- Profile ----
+  $('#profileEditBtn').addEventListener('click', openEditProfile);
+  $('#profileChangeAvatarBtn').addEventListener('click', openEditProfile);
+  $('#editProfileCancel').addEventListener('click', closeEditProfile);
+  $('#editProfileSave').addEventListener('click', saveEditProfile);
+  $('#editAvatarUrl').addEventListener('input', updateEditAvatarPreview);
+  $('#editName').addEventListener('input', updateEditAvatarPreview);
+  $('#editBio').addEventListener('input', updateBioCount);
+  $('#editProfileSheet').addEventListener('click', (e) => {
+    if (e.target === $('#editProfileSheet')) closeEditProfile();
+  });
+
+  // Info sheet
+  $$('.profile-row').forEach((row) => {
+    row.addEventListener('click', () => {
+      const key = row.dataset.row;
+      if (key === 'subscription') {
+        if (state.isPremium) toast('You are on Member+ ✓');
+        else openPaywall();
+        return;
+      }
+      openInfoSheet(key);
+    });
+  });
+  $('#infoClose').addEventListener('click', closeInfoSheet);
+  $('#infoSheet').addEventListener('click', (e) => {
+    if (e.target === $('#infoSheet')) closeInfoSheet();
+  });
+
+  // Sign out
+  $('#profileSignOutBtn').addEventListener('click', () => {
+    openConfirm({
+      icon: 'signout',
+      title: 'Sign out?',
+      body: 'You can sign back in any time. Your matches and messages will be waiting.',
+      confirmLabel: 'Sign out',
+      onConfirm: () => { closeConfirm(); handleSignOut(); },
+    });
+  });
 
   // ---- Chat header ----
   $('#chatBack').addEventListener('click', () => showScreen('messages'));
@@ -2155,10 +2651,8 @@ function bindEvents() {
     const reader = new FileReader();
     reader.onload = () => {
       const msg = {
-        id: 'img-' + Date.now(),
-        sender_id: state.myId,
-        media_url: reader.result,
-        content: null,
+        id: 'img-' + Date.now(), sender_id: state.myId,
+        media_url: reader.result, content: null,
         created_at: new Date().toISOString(),
       };
       (state.messages[state.activeMatchId] ||= []).push(msg);
@@ -2210,12 +2704,8 @@ function bindEvents() {
   $('#ussdConfirmBtn').addEventListener('click', confirmUssdPayment);
   $('#ussdCancelBtn').addEventListener('click', closeUssdModal);
   $('#ussdCopyBtn').addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText($('#ussdCodeDisplay').textContent);
-      toast('Code copied');
-    } catch {
-      toast('Long-press the code to copy');
-    }
+    try { await navigator.clipboard.writeText($('#ussdCodeDisplay').textContent); toast('Code copied'); }
+    catch { toast('Long-press the code to copy'); }
   });
   $('#ussdModal').addEventListener('click', (e) => {
     if (e.target === $('#ussdModal')) closeUssdModal();
@@ -2237,16 +2727,17 @@ function bindEvents() {
     const modal = $('#premiumModal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
-
     await loadDeck();
     showScreen('likes');
     await renderLikes();
   });
 
-  // ---- Escape closes overlays ----
+  // ---- Escape ----
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (state.call) { endCall(false); return; }
+    if (!$('#editProfileSheet').classList.contains('hidden')) { closeEditProfile(); return; }
+    if (!$('#infoSheet').classList.contains('hidden')) { closeInfoSheet(); return; }
     if (!$('#ussdModal').classList.contains('hidden')) { closeUssdModal(); return; }
     if (!$('#confirmModal').classList.contains('hidden')) { closeConfirm(); return; }
     if (!$('#partnerProfileSheet').classList.contains('hidden')) { closePartnerProfile(); return; }
@@ -2261,7 +2752,7 @@ function bindEvents() {
 }
 
 /* ============================================================
- * 22. BOOT
+ * 23. BOOT
  * ========================================================== */
 async function enterApp() {
   const { data: { user } } = await supabase.auth.getUser();
