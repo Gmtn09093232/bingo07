@@ -82,20 +82,16 @@ app.get('/config.js', (_req, res) => {
 });
 
 // ---- Static frontend ----
-// Serves public/index.html at "/" and any assets under public/
 app.use(express.static(path.join(__dirname, '')));
 
 /* ------------------------------------------------------------
  * 2. SUPABASE CLIENTS
  * ---------------------------------------------------------- */
 
-// Admin client — bypasses RLS. NEVER expose this key to the browser.
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-// Build a client that acts *as* the requesting user so that
-// Postgres functions using auth.uid() (e.g. get_nearby_profiles) work.
 function supabaseAsUser(token) {
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -438,6 +434,35 @@ app.get('/api/matches', requireAuth, async (req, res) => {
 });
 
 /* ------------------------------------------------------------
+ * DELETE /api/matches/:matchId — unmatch
+ * ---------------------------------------------------------- */
+app.delete('/api/matches/:matchId', requireAuth, async (req, res) => {
+  try {
+    const me = req.profile;
+    const { matchId } = req.params;
+
+    const { data: match, error: mErr } = await supabaseAdmin
+      .from('matches')
+      .select('*')
+      .eq('id', matchId)
+      .maybeSingle();
+
+    if (mErr) throw mErr;
+    if (!match) return res.status(404).json({ error: 'Match not found' });
+    if (match.user1_id !== me.id && match.user2_id !== me.id) {
+      return res.status(403).json({ error: 'Not a participant of this match' });
+    }
+
+    await supabaseAdmin.from('matches').delete().eq('id', matchId);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[DELETE /api/matches]', err);
+    res.status(500).json({ error: 'Failed to unmatch' });
+  }
+});
+
+/* ------------------------------------------------------------
  * GET /api/messages/:matchId
  * ---------------------------------------------------------- */
 app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
@@ -655,6 +680,7 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
 
     if (error) throw error;
 
+    // ---- MOCK MODE ----
     if (!TELEBIRR_API_KEY) {
       console.warn('[telebirr] TELEBIRR_API_KEY not set — returning mock checkout.');
       return res.status(201).json({
@@ -662,19 +688,19 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
         txn_id: txnId,
         subscription,
         plan: { plan_type, ...plan },
-        checkout_url: `/paywall.html?mock_checkout=${txnId}`,
-        message:
-          'Tele Birr credentials are not configured. This is a simulated checkout.',
+        checkout_url: null,
+        message: 'Tele Birr credentials are not configured. This is a simulated checkout.',
       });
     }
 
+    // ---- LIVE MODE ----
     const payload = {
       appId: TELEBIRR_MERCHANT_ID,
       outTradeNo: txnId,
       totalAmount: plan.amount_etb.toFixed(2),
       subject: plan.label,
       notifyUrl: `${process.env.PUBLIC_BASE_URL || ''}/api/payments/telebirr/webhook`,
-      returnUrl: `${process.env.PUBLIC_BASE_URL || ''}/paywall.html?txn=${txnId}`,
+      returnUrl: `${process.env.PUBLIC_BASE_URL || ''}/?txn=${txnId}`,
       timeoutExpress: '30m',
       nonce: crypto.randomBytes(16).toString('hex'),
       timestamp: Date.now().toString(),
@@ -812,23 +838,29 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
 });
 
 /* ------------------------------------------------------------
- * DEV-ONLY: simulate a successful payment
+ * POST /api/payments/mock-confirm
+ * Activates premium without a real Tele Birr call.
+ * Only allowed when Tele Birr credentials are NOT configured.
  * ---------------------------------------------------------- */
 app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({ error: 'Not found' });
+  if (TELEBIRR_API_KEY) {
+    return res.status(403).json({
+      error: 'Mock confirmation is disabled because Tele Birr is configured. Use the real webhook.',
+    });
   }
+
   try {
     const { txn_id } = req.body || {};
     if (!txn_id) return res.status(400).json({ error: 'txn_id is required' });
 
-    const { data: sub } = await supabaseAdmin
+    const { data: sub, error: subErr } = await supabaseAdmin
       .from('subscriptions')
       .select('*')
       .eq('telebirr_txn_id', txn_id)
       .eq('user_id', req.profile.id)
       .maybeSingle();
 
+    if (subErr) throw subErr;
     if (!sub) return res.status(404).json({ error: 'Unknown transaction' });
 
     const plan = PLANS[sub.plan_type] || PLANS.monthly;
@@ -844,14 +876,26 @@ app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
       })
       .eq('id', sub.id);
 
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error: pErr } = await supabaseAdmin
       .from('profiles')
-      .update({ is_premium: true, daily_likes_used: 0, last_like_reset: startedAt.toISOString() })
+      .update({
+        is_premium: true,
+        daily_likes_used: 0,
+        last_like_reset: startedAt.toISOString(),
+      })
       .eq('id', req.profile.id)
       .select('*')
       .single();
 
-    res.json({ is_premium: true, profile, subscription: { ...sub, status: 'active' } });
+    if (pErr) throw pErr;
+
+    console.log(`[mock-confirm] Member+ activated for ${req.profile.id}`);
+
+    res.json({
+      is_premium: true,
+      profile,
+      subscription: { ...sub, status: 'active' },
+    });
   } catch (err) {
     console.error('[POST /api/payments/mock-confirm]', err);
     res.status(500).json({ error: 'Mock confirmation failed' });
