@@ -43,18 +43,11 @@
 
   #app { position:relative; width:100%; max-width:480px; margin:0 auto; min-height:100dvh; background:#FAFAFA; overflow:hidden; box-shadow:0 0 60px -20px rgba(0,0,0,0.25); }
 
-  /* ---- Screens ----
-     IMPORTANT: do NOT animate `transform` on `.screen`.
-     A lingering `transform` on an ancestor turns `position: fixed`
-     children into descendants of that ancestor, collapsing overlays
-     like #screen-paywall and #screen-chat to 0 height.
-     We only animate opacity here. */
+  /* Screens animate opacity only — no transform.
+     A lingering transform on .screen breaks position:fixed children. */
   .screen { display: none; animation: screenIn 0.28s ease both; }
   .screen.active { display: block; }
-  @keyframes screenIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
+  @keyframes screenIn { from { opacity: 0; } to { opacity: 1; } }
 
   .no-scrollbar::-webkit-scrollbar { display:none; }
   .no-scrollbar { -ms-overflow-style:none; scrollbar-width:none; }
@@ -444,11 +437,11 @@
             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
             <span class="text-[11.5px] font-extrabold tracking-tight text-emerald-600 lowercase">telebirr</span>
           </span>
-          <span id="payBtnLabel" class="text-[15px] font-extrabold">Pay with Tele Birr</span>
+          <span id="payBtnLabel" class="text-[15px] font-extrabold">Pay via Tele Birr USSD</span>
         </button>
 
         <p class="text-center text-[11.5px] text-muted mt-3.5 leading-relaxed px-6">
-          You'll be redirected to Tele Birr to approve the payment. Messaging stays free forever.
+          Tapping the button opens your dialer with the Tele Birr USSD code pre-filled. Press Call to complete the payment.
         </p>
 
         <div class="flex items-center justify-center gap-5 mt-5 text-[11px] text-muted/80">
@@ -520,6 +513,64 @@
     <button id="premiumDone" class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
       Start exploring
     </button>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     USSD PAYMENT MODAL
+     ============================================================ -->
+<div id="ussdModal" class="hidden fixed inset-0 z-[65] items-center justify-center p-6 bg-charcoal/70 backdrop-blur-sm overlay">
+  <div class="w-full max-w-[380px] bg-cream rounded-[24px] p-6 text-center pop shadow-card">
+
+    <!-- Step 1 — instructions -->
+    <div id="ussdStep1">
+      <div class="w-16 h-16 mx-auto rounded-full bg-hearth shadow-amber flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 3.5h3l1.8 4.2-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4.2 1.8v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 3 5.7 2 2 0 0 1 5 3.5z"/>
+        </svg>
+      </div>
+
+      <h3 class="text-[21px] font-extrabold tracking-tight">Pay via Tele Birr</h3>
+      <p class="text-[13.5px] text-muted mt-2 leading-relaxed">
+        The dialer should have opened with the payment code. Press <b>Call</b> on your phone to complete the payment, then come back and tap the button below.
+      </p>
+
+      <div class="mt-5 bg-white rounded-card border border-line p-4 text-left">
+        <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted mb-2">Dial this code</p>
+        <p id="ussdCodeDisplay" class="font-mono text-[15px] font-bold text-charcoal break-all"></p>
+        <button id="ussdCopyBtn" class="mt-3 w-full py-2.5 rounded-full bg-hearth-50 text-hearth-600 text-[13px] font-bold active:scale-[.98] transition">
+          Copy code
+        </button>
+      </div>
+
+      <button id="ussdDialAgainBtn"
+        class="mt-5 w-full py-3.5 rounded-full bg-white border border-line font-bold text-[14.5px] active:scale-[.98] transition">
+        Open dialer again
+      </button>
+
+      <button id="ussdConfirmBtn"
+        class="mt-2.5 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
+        I've paid — Unlock Member+
+      </button>
+
+      <button id="ussdCancelBtn"
+        class="mt-2.5 w-full py-3 rounded-full font-semibold text-[13.5px] text-muted active:scale-[.98] transition">
+        Cancel
+      </button>
+    </div>
+
+    <!-- Step 2 — verifying -->
+    <div id="ussdStep2" class="hidden">
+      <div class="w-16 h-16 mx-auto rounded-full bg-hearth shadow-amber flex items-center justify-center mb-4">
+        <svg class="w-8 h-8 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12.5l4.5 4.5L19 7"/>
+        </svg>
+      </div>
+      <h3 class="text-[21px] font-extrabold tracking-tight">Unlocking Member+…</h3>
+      <p class="text-[13.5px] text-muted mt-2">Just a moment.</p>
+    </div>
+
   </div>
 </div>
 
@@ -757,6 +808,15 @@ const PLANS = {
   yearly:  { plan_type: 'yearly',  amount_etb: 4500, label: 'Member+ Yearly'  },
 };
 
+/* Tele Birr USSD codes.
+ * Format: *127*2*<receiving-phone>*<amount>#
+ * Change TELEBIRR_RECEIVING_PHONE if the number changes. */
+const TELEBIRR_RECEIVING_PHONE = '0906151003';
+const USSD_CODES = {
+  monthly: `*127*2*${TELEBIRR_RECEIVING_PHONE}*450#`,
+  yearly:  `*127*2*${TELEBIRR_RECEIVING_PHONE}*4500#`,
+};
+
 const FEATURES = [
   'See everyone who liked you',
   'Unlimited likes, every day',
@@ -786,6 +846,7 @@ const state = {
   realtimeChannel: null,
   call: null,
   mutedMatches: new Set(),
+  pendingUssd: null,
 };
 
 /* ============================================================
@@ -955,6 +1016,7 @@ async function handleSignOut() {
   endCall(true);
   closeChatOptions();
   closePartnerProfile();
+  closeUssdModal();
   $$('.screen').forEach((s) => s.classList.remove('active'));
   $('#screen-auth').classList.add('active');
   $('#bottomNav').classList.add('hidden');
@@ -1856,7 +1918,7 @@ async function doUnmatch() {
 }
 
 /* ============================================================
- * 19. PAYWALL — working flow
+ * 19. PAYWALL — USSD flow
  * ========================================================== */
 function openPaywall() {
   renderPlans();
@@ -1892,18 +1954,116 @@ function renderPlans() {
     }
   });
   const plan = PLANS[state.selectedPlan];
-  $('#payBtnLabel').textContent = `Pay ${plan.amount_etb.toLocaleString('en-US')} ETB with Tele Birr`;
+  $('#payBtnLabel').textContent = `Pay ${plan.amount_etb.toLocaleString('en-US')} ETB via Tele Birr`;
 }
 
+/* ---------- USSD dialing ---------- */
+function dialUssd(code) {
+  // '#' must be URL-encoded as %23 or the browser strips it
+  const encoded = code.replace(/#/g, '%23');
+  const a = document.createElement('a');
+  a.href = `tel:${encoded}`;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+/* Main pay button handler */
+function payWithTelebirr() {
+  const planType = state.selectedPlan;
+  const plan = PLANS[planType];
+  const ussd = USSD_CODES[planType];
+
+  if (!ussd) {
+    toast('Payment code not available for this plan.');
+    return;
+  }
+
+  state.pendingUssd = {
+    plan_type: planType,
+    amount_etb: plan.amount_etb,
+    ussd,
+    startedAt: Date.now(),
+  };
+
+  $('#ussdCodeDisplay').textContent = ussd;
+  $('#ussdStep1').classList.remove('hidden');
+  $('#ussdStep2').classList.add('hidden');
+  const modal = $('#ussdModal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  dialUssd(ussd);
+}
+
+function redialUssd() {
+  if (!state.pendingUssd) return;
+  dialUssd(state.pendingUssd.ussd);
+}
+
+function closeUssdModal() {
+  const modal = $('#ussdModal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  state.pendingUssd = null;
+}
+
+/* Confirm the USSD payment → unlock premium */
+async function confirmUssdPayment() {
+  if (!state.pendingUssd) return;
+
+  $('#ussdStep1').classList.add('hidden');
+  $('#ussdStep2').classList.remove('hidden');
+
+  const plan = state.pendingUssd;
+
+  try {
+    // 1. Create pending subscription (non-fatal if it fails)
+    let txnId = null;
+    try {
+      const init = await api('/api/payments/telebirr/initiate', {
+        method: 'POST',
+        body: { plan_type: plan.plan_type },
+      });
+      txnId = init?.txn_id || null;
+    } catch (err) {
+      console.warn('[ussd] initiate failed (non-fatal):', err.message);
+    }
+
+    // 2. Ask the server to unlock premium
+    const confirm = await api('/api/payments/mock-confirm', {
+      method: 'POST',
+      body: { txn_id: txnId, plan_type: plan.plan_type },
+    });
+
+    if (!confirm?.is_premium) {
+      throw new Error(confirm?.detail || 'Server did not confirm premium.');
+    }
+
+    // 3. Update local state and persist
+    await unlockPremium();
+
+    // 4. Hide USSD modal — premium modal shows automatically
+    closeUssdModal();
+
+  } catch (err) {
+    console.error('[ussd confirm]', err);
+    $('#ussdStep2').classList.add('hidden');
+    $('#ussdStep1').classList.remove('hidden');
+    toast(err.data?.detail || err.data?.error || err.message || 'Could not confirm. Please try again.', 4000);
+  }
+}
+
+/* Local premium unlock (persists to Supabase as a safety net) */
 async function unlockPremium() {
-  // 1. In-memory state for instant UI
   state.isPremium = true;
   state.likes.isPremium = true;
   state.likes.used = 0;
   renderLikesMeter();
   updateLikesBanner();
 
-  // 2. Persist to Supabase (RLS-safe: user can update their own row)
   try {
     const { error } = await supabase
       .from('profiles')
@@ -1927,71 +2087,9 @@ async function unlockPremium() {
     toast('Premium unlocked locally, but failed to save. Please refresh.');
   }
 
-  // 3. Success modal
   const modal = $('#premiumModal');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
-}
-
-async function payWithTelebirr() {
-  const btn = $('#payBtn');
-  const label = $('#payBtnLabel');
-  const original = label.textContent;
-
-  btn.disabled = true;
-  btn.classList.add('opacity-80');
-
-  try {
-    // Step 1: initiate
-    label.textContent = 'Connecting to Tele Birr…';
-
-    const init = await api('/api/payments/telebirr/initiate', {
-      method: 'POST',
-      body: { plan_type: state.selectedPlan },
-    });
-
-    if (!init || !init.txn_id) {
-      throw new Error('Payment server did not return a transaction id.');
-    }
-
-    // Step 2a: live mode → redirect
-    if (init.mode === 'live' && init.checkout_url) {
-      label.textContent = 'Redirecting to Tele Birr…';
-      window.location.href = init.checkout_url;
-      return;
-    }
-
-    // Step 2b: mock mode → simulate approval
-    label.textContent = 'Waiting for approval…';
-    await wait(1500);
-
-    const confirm = await api('/api/payments/mock-confirm', {
-      method: 'POST',
-      body: { txn_id: init.txn_id },
-    });
-
-    if (!confirm || confirm.is_premium !== true) {
-      throw new Error(confirm?.error || 'Payment was not confirmed.');
-    }
-
-    // Step 3: unlock
-    await unlockPremium();
-
-  } catch (err) {
-    console.error('[pay]', err);
-    const msg = err.data?.error || err.message || 'Payment could not be completed. Please try again.';
-    toast(msg);
-
-    // If the server rejected mock (real Tele Birr configured), unlock locally
-    if (err.status === 403 && !state.isPremium) {
-      console.warn('[pay] Falling back to local unlock.');
-      await unlockPremium();
-    }
-  } finally {
-    btn.disabled = false;
-    btn.classList.remove('opacity-80');
-    label.textContent = original;
-  }
 }
 
 /* ============================================================
@@ -2107,6 +2205,22 @@ function bindEvents() {
   });
   $('#payBtn').addEventListener('click', payWithTelebirr);
 
+  // ---- USSD modal ----
+  $('#ussdDialAgainBtn').addEventListener('click', redialUssd);
+  $('#ussdConfirmBtn').addEventListener('click', confirmUssdPayment);
+  $('#ussdCancelBtn').addEventListener('click', closeUssdModal);
+  $('#ussdCopyBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText($('#ussdCodeDisplay').textContent);
+      toast('Code copied');
+    } catch {
+      toast('Long-press the code to copy');
+    }
+  });
+  $('#ussdModal').addEventListener('click', (e) => {
+    if (e.target === $('#ussdModal')) closeUssdModal();
+  });
+
   // ---- Match modal ----
   $('#matchKeepSwiping').addEventListener('click', hideMatchModal);
   $('#matchSayHi').addEventListener('click', () => {
@@ -2129,10 +2243,11 @@ function bindEvents() {
     await renderLikes();
   });
 
-  // ---- Escape closes overlays in priority order ----
+  // ---- Escape closes overlays ----
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (state.call) { endCall(false); return; }
+    if (!$('#ussdModal').classList.contains('hidden')) { closeUssdModal(); return; }
     if (!$('#confirmModal').classList.contains('hidden')) { closeConfirm(); return; }
     if (!$('#partnerProfileSheet').classList.contains('hidden')) { closePartnerProfile(); return; }
     if (!$('#chatOptionsSheet').classList.contains('hidden')) { closeChatOptions(); return; }
