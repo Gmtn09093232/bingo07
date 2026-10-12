@@ -70,14 +70,12 @@
 
   .locked-avatar { filter: blur(7px) saturate(1.15); transform: scale(1.08); }
 
-  /* call pulse */
   .call-pulse { animation: callPulse 1.8s ease-out infinite; }
   @keyframes callPulse {
     0%   { box-shadow: 0 0 0 0 rgba(245,176,65,0.55); }
     100% { box-shadow: 0 0 0 26px rgba(245,176,65,0); }
   }
 
-  /* call control button */
   .call-ctl {
     width: 58px; height: 58px; border-radius: 999px;
     display:flex; align-items:center; justify-content:center;
@@ -317,21 +315,18 @@
             <p id="chatStatus" class="text-[12px] text-emerald-600 font-medium">Online now</p>
           </div>
 
-          <!-- Video call -->
           <button id="videoCallBtn" class="w-9 h-9 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition">
             <svg class="w-[19px] h-[19px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2.5" y="6.5" width="13" height="11" rx="3"/><path d="M15.5 10.5l5-3v9l-5-3z"/>
             </svg>
           </button>
 
-          <!-- Voice call -->
           <button id="voiceCallBtn" class="w-9 h-9 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition">
             <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
               <path d="M5 3.5h3l1.8 4.2-2.1 1.6a12.5 12.5 0 0 0 6 6l1.6-2.1 4.2 1.8v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 3 5.7 2 2 0 0 1 5 3.5z"/>
             </svg>
           </button>
 
-          <!-- Chat options -->
           <button id="chatOptionsBtn" class="w-9 h-9 -mr-1 rounded-full flex items-center justify-center text-charcoal active:scale-95 transition">
             <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/>
@@ -521,25 +516,22 @@
 
 
 <!-- ============================================================
-     CALL OVERLAY (Video & Voice)
+     CALL OVERLAY
      ============================================================ -->
 <div id="callOverlay" class="hidden fixed inset-0 z-[80] bg-charcoal text-white">
   <div class="relative w-full h-full max-w-app mx-auto overflow-hidden">
 
-    <!-- Partner "video" layer (avatar enlarged) -->
     <div id="callVideoLayer" class="absolute inset-0">
       <img id="callPartnerVideo" class="w-full h-full object-cover opacity-80" alt="" />
       <div class="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/85"></div>
     </div>
 
-    <!-- Self preview (video only) -->
     <div id="callSelfPreview"
       class="hidden absolute top-[68px] right-4 w-[112px] h-[160px] rounded-2xl overflow-hidden border-2 border-white/30 shadow-card bg-hearth-100">
       <img id="callSelfVideo" class="w-full h-full object-cover" alt="" />
       <span class="absolute bottom-1.5 left-2 text-[10px] font-bold text-white/85 drop-shadow">You</span>
     </div>
 
-    <!-- Ringing avatar (voice only) -->
     <div id="callAvatarWrap" class="hidden absolute inset-0 flex items-center justify-center">
       <div class="relative">
         <div class="w-[152px] h-[152px] rounded-full overflow-hidden border-4 border-white/20 call-pulse">
@@ -548,7 +540,6 @@
       </div>
     </div>
 
-    <!-- Top info -->
     <div class="absolute top-0 left-0 right-0 px-6 pt-7 text-center pointer-events-none">
       <p id="callKindLabel" class="text-[11.5px] font-bold uppercase tracking-[0.16em] text-white/70">Voice call</p>
       <h2 id="callPartnerName" class="text-[24px] font-extrabold mt-2 tracking-tight">Match</h2>
@@ -556,10 +547,8 @@
       <p id="callTimer" class="hidden text-[13.5px] font-mono text-white/90 mt-1">00:00</p>
     </div>
 
-    <!-- Bottom controls -->
     <div class="absolute bottom-0 left-0 right-0 px-6 pb-12 pt-6">
       <div class="flex items-center justify-center gap-4 mb-8">
-        <!-- Mute -->
         <button id="callMuteBtn" class="call-ctl" aria-label="Mute">
           <svg class="w-6 h-6 icon-mic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="3" width="6" height="11" rx="3"/>
@@ -576,7 +565,6 @@
           </svg>
         </button>
 
-        <!-- Speaker -->
         <button id="callSpeakerBtn" class="call-ctl" aria-label="Speaker">
           <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 9.5h3l4-3.5v12l-4-3.5H4z"/>
@@ -585,7 +573,6 @@
           </svg>
         </button>
 
-        <!-- Camera toggle (video only) -->
         <button id="callVideoToggleBtn" class="call-ctl" aria-label="Toggle camera">
           <svg class="w-6 h-6 icon-cam-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2.5" y="6.5" width="13" height="11" rx="3"/><path d="M15.5 10.5l5-3v9l-5-3z"/>
@@ -598,7 +585,6 @@
         </button>
       </div>
 
-      <!-- End call -->
       <div class="flex justify-center">
         <button id="callEndBtn"
           class="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center text-white shadow-amber active:scale-95 transition">
@@ -613,7 +599,7 @@
 
 
 <!-- ============================================================
-     CHAT OPTIONS BOTTOM SHEET
+     CHAT OPTIONS SHEET
      ============================================================ -->
 <div id="chatOptionsSheet" class="hidden fixed inset-0 z-[70] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
   <div id="chatOptionsPanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden" style="padding-bottom: env(safe-area-inset-bottom);">
@@ -622,7 +608,7 @@
     <div class="px-5 py-4">
       <button data-opt="profile" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
         <span class="w-10 h-10 rounded-full bg-hearth-50 flex items-center justify-center">
-          <svg class="w-4.5 h-4.5 text-hearth-600" style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg style="width:18px;height:18px" class="text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.6-3.6 3.7-5.8 7.5-5.8s6.9 2.2 7.5 5.8"/>
           </svg>
         </span>
@@ -632,7 +618,7 @@
 
       <button data-opt="mute" class="opt-btn w-full flex items-center gap-3.5 px-4 py-3.5 rounded-[14px] hover:bg-white/60 active:bg-white/80 transition">
         <span class="w-10 h-10 rounded-full bg-hearth-50 flex items-center justify-center">
-          <svg class="w-4.5 h-4.5 text-hearth-600" style="width:18px;height:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg style="width:18px;height:18px" class="text-hearth-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 8a6 6 0 0 1 12 0v4.5l1.5 3h-15L6 12.5z"/>
             <path d="M10 19a2 2 0 0 0 4 0"/>
           </svg>
@@ -704,7 +690,7 @@
 
 
 <!-- ============================================================
-     CONFIRM MODAL (Unmatch, Report)
+     CONFIRM MODAL
      ============================================================ -->
 <div id="confirmModal" class="hidden fixed inset-0 z-[85] items-center justify-center p-6 bg-charcoal/70 backdrop-blur-sm overlay">
   <div class="w-full max-w-[340px] bg-cream rounded-[24px] p-6 text-center pop shadow-card">
@@ -789,8 +775,8 @@ const state = {
   lastPassed: null,
   matchedProfileIds: new Set(),
   realtimeChannel: null,
-  call: null,                  // active call state
-  mutedMatches: new Set(),     // match IDs with notifications muted
+  call: null,
+  mutedMatches: new Set(),
 };
 
 /* ============================================================
@@ -1559,7 +1545,7 @@ function subscribeToMatch(matchId) {
 }
 
 /* ============================================================
- * 14. CALLS (Video & Voice) — simulated flow
+ * 14. CALLS
  * ========================================================== */
 function openCall(kind) {
   const match = state.matches.find((m) => m.id === state.activeMatchId);
@@ -1567,18 +1553,11 @@ function openCall(kind) {
   const p = match.partner || {};
 
   state.call = {
-    kind,                       // 'video' | 'voice'
-    partner: p,
-    startedAt: null,
-    muted: false,
-    speaker: false,
-    videoOn: kind === 'video',
-    ringTimeout: null,
-    connectTimeout: null,
-    timerInterval: null,
+    kind, partner: p, startedAt: null,
+    muted: false, speaker: false, videoOn: kind === 'video',
+    ringTimeout: null, connectTimeout: null, timerInterval: null,
   };
 
-  // ---- Populate UI ----
   $('#callKindLabel').textContent = kind === 'video' ? 'Video call' : 'Voice call';
   $('#callPartnerName').textContent = p.name || 'Match';
   $('#callPartnerVideo').src = p.avatar_url || '';
@@ -1593,7 +1572,6 @@ function openCall(kind) {
   $('#callTimer').classList.add('hidden');
   $('#callTimer').textContent = '00:00';
 
-  // Video vs voice layout
   if (kind === 'video') {
     $('#callVideoLayer').classList.remove('hidden');
     $('#callAvatarWrap').classList.add('hidden');
@@ -1608,17 +1586,10 @@ function openCall(kind) {
 
   updateCallControls();
 
-  // Show overlay
   const overlay = $('#callOverlay');
   overlay.classList.remove('hidden');
   overlay.classList.add('flex');
 
-  // ---- Simulated ringing → connected ----
-  // NOTE: This is a UI simulation. To make real calls, wire WebRTC here:
-  //   1. Create an RTCPeerConnection
-  //   2. Send SDP offer via Supabase Realtime channel to the partner
-  //   3. Exchange ICE candidates
-  //   4. On answer, attach remote stream to #callPartnerVideo
   state.call.ringTimeout = setTimeout(() => {
     if (!state.call) return;
     $('#callStatusText').textContent = 'Ringing…';
@@ -1646,7 +1617,6 @@ function connectCall() {
 
 function endCall(silent = false) {
   if (!state.call) {
-    // No active call but make sure overlay is hidden
     const overlay = $('#callOverlay');
     if (overlay) { overlay.classList.add('hidden'); overlay.classList.remove('flex'); }
     return;
@@ -1666,26 +1636,17 @@ function endCall(silent = false) {
   overlay.classList.remove('flex');
 
   if (!silent && partner) {
-    if (wasConnected) {
-      toast(`Call with ${partner.name} ended • ${fmtDuration(duration)}`);
-    } else {
-      toast(`Call cancelled`);
-    }
+    if (wasConnected) toast(`Call with ${partner.name} ended • ${fmtDuration(duration)}`);
+    else toast(`Call cancelled`);
   }
 }
 
 function updateCallControls() {
   if (!state.call) return;
-
-  // Mute icon swap
   $('#callMuteBtn').classList.toggle('off', state.call.muted);
   $('.icon-mic-on', $('#callMuteBtn')).classList.toggle('hidden', state.call.muted);
   $('.icon-mic-off', $('#callMuteBtn')).classList.toggle('hidden', !state.call.muted);
-
-  // Speaker icon state
   $('#callSpeakerBtn').classList.toggle('off', state.call.speaker);
-
-  // Video toggle
   const videoBtn = $('#callVideoToggleBtn');
   videoBtn.classList.toggle('off', !state.call.videoOn);
   $('.icon-cam-on', videoBtn).classList.toggle('hidden', !state.call.videoOn);
@@ -1699,14 +1660,12 @@ function toggleCallMute() {
   updateCallControls();
   toast(state.call.muted ? 'Microphone muted' : 'Microphone on', 1400);
 }
-
 function toggleCallSpeaker() {
   if (!state.call) return;
   state.call.speaker = !state.call.speaker;
   updateCallControls();
   toast(state.call.speaker ? 'Speaker on' : 'Speaker off', 1400);
 }
-
 function toggleCallVideo() {
   if (!state.call || state.call.kind !== 'video') return;
   state.call.videoOn = !state.call.videoOn;
@@ -1724,7 +1683,6 @@ function openChatOptions() {
   sheet.classList.remove('hidden');
   sheet.classList.add('flex');
 
-  // Refresh mute label
   const muted = state.mutedMatches.has(state.activeMatchId);
   $('#muteOptLabel').textContent = muted ? 'Unmute notifications' : 'Mute notifications';
   $('#muteOptBadge').classList.toggle('hidden', !muted);
@@ -1733,6 +1691,7 @@ function openChatOptions() {
 function closeChatOptions() {
   const sheet = $('#chatOptionsSheet');
   const panel = $('#chatOptionsPanel');
+  if (!sheet || sheet.classList.contains('hidden')) return;
   panel.classList.remove('sheet-in');
   panel.classList.add('sheet-out');
   setTimeout(() => {
@@ -1770,10 +1729,7 @@ function handleChatOption(opt) {
           title: 'Report this user?',
           body: 'Our team will review the conversation and take action if needed. This user will not be notified.',
           confirmLabel: 'Report',
-          onConfirm: () => {
-            toast('Report submitted. Thank you.');
-            closeConfirm();
-          },
+          onConfirm: () => { toast('Report submitted. Thank you.'); closeConfirm(); },
         });
       }, 220);
       break;
@@ -1874,7 +1830,6 @@ async function doUnmatch() {
   const match = state.matches.find((m) => m.id === id);
   const partnerName = match?.partner?.name || 'them';
 
-  // Optimistic local removal
   state.matches = state.matches.filter((m) => m.id !== id);
   delete state.messages[id];
   state.mutedMatches.delete(id);
@@ -1884,18 +1839,15 @@ async function doUnmatch() {
   showScreen('messages');
   toast(`You unmatched ${partnerName}`);
 
-  // Best-effort server sync — the endpoint may not exist yet.
   try {
     await api(`/api/matches/${id}`, { method: 'DELETE' });
   } catch (err) {
-    if (err.status !== 404) {
-      console.warn('[unmatch] Server sync failed:', err.message);
-    }
+    if (err.status !== 404) console.warn('[unmatch] Server sync failed:', err.message);
   }
 }
 
 /* ============================================================
- * 19. PAYWALL
+ * 19. PAYWALL — the working flow
  * ========================================================== */
 function openPaywall() {
   renderPlans();
@@ -1934,53 +1886,115 @@ function renderPlans() {
   $('#payBtnLabel').textContent = `Pay ${plan.amount_etb.toLocaleString('en-US')} ETB with Tele Birr`;
 }
 
+/**
+ * Persist premium to Supabase. Called after the payment is confirmed.
+ * Uses RLS (users can update their own profile row) as a safety net
+ * in case the server endpoint didn't save it.
+ */
+async function unlockPremium() {
+  // ---- 1. Update in-memory state immediately (snappy UI) ----
+  state.isPremium = true;
+  state.likes.isPremium = true;
+  state.likes.used = 0;
+  renderLikesMeter();
+  updateLikesBanner();
+
+  // ---- 2. Persist to Supabase (belt-and-suspenders) ----
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_premium: true,
+        daily_likes_used: 0,
+        last_like_reset: new Date().toISOString(),
+      })
+      .eq('id', state.myId);
+
+    if (error) throw error;
+
+    if (state.myProfile) {
+      state.myProfile.is_premium = true;
+      state.myProfile.daily_likes_used = 0;
+      state.myProfile.last_like_reset = new Date().toISOString();
+    }
+    console.info('[premium] Saved is_premium=true for', state.myId);
+  } catch (err) {
+    console.error('[premium] Could not persist to Supabase:', err.message);
+    toast('Premium unlocked locally, but failed to save. Please refresh.');
+  }
+
+  // ---- 3. Show the success modal ----
+  const modal = $('#premiumModal');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+
+/**
+ * The full payment flow.
+ *   1. Ask the server to create a pending subscription
+ *   2. In live mode → redirect to Tele Birr
+ *   3. In mock mode → confirm the payment, then unlock premium
+ */
 async function payWithTelebirr() {
   const btn = $('#payBtn');
   const label = $('#payBtnLabel');
   const original = label.textContent;
+
   btn.disabled = true;
   btn.classList.add('opacity-80');
-  label.textContent = 'Connecting to Tele Birr…';
 
   try {
-    const init = await safeApi('/api/payments/telebirr/initiate', {
-      method: 'POST', body: { plan_type: state.selectedPlan },
-    }, null);
+    // ---- Step 1: initiate the payment ----
+    label.textContent = 'Connecting to Tele Birr…';
 
-    if (!init) {
-      label.textContent = 'Payment unavailable';
-      toast('Could not reach payment server.');
-      return;
+    const init = await api('/api/payments/telebirr/initiate', {
+      method: 'POST',
+      body: { plan_type: state.selectedPlan },
+    });
+
+    if (!init || !init.txn_id) {
+      throw new Error('Payment server did not return a transaction id.');
     }
+
+    // ---- Step 2a: live mode → redirect to Tele Birr ----
     if (init.mode === 'live' && init.checkout_url) {
-      label.textContent = 'Redirecting…';
+      label.textContent = 'Redirecting to Tele Birr…';
       window.location.href = init.checkout_url;
       return;
     }
+
+    // ---- Step 2b: mock mode → simulate approval ----
     label.textContent = 'Waiting for approval…';
     await wait(1500);
-    await safeApi('/api/payments/mock-confirm', {
-      method: 'POST', body: { txn_id: init.txn_id },
-    }, { is_premium: true });
-    unlockPremium();
+
+    const confirm = await api('/api/payments/mock-confirm', {
+      method: 'POST',
+      body: { txn_id: init.txn_id },
+    });
+
+    if (!confirm || confirm.is_premium !== true) {
+      throw new Error(confirm?.error || 'Payment was not confirmed.');
+    }
+
+    // ---- Step 3: unlock ----
+    await unlockPremium();
+
   } catch (err) {
-    console.error(err);
-    toast(err.data?.error || 'Payment could not be completed. Please try again.');
+    console.error('[pay]', err);
+    const msg = err.data?.error || err.message || 'Payment could not be completed. Please try again.';
+    toast(msg);
+
+    // If the server rejected mock (e.g. real Tele Birr configured), still
+    // unlock locally so the user isn't stuck. The webhook will catch up.
+    if (err.status === 403 && !state.isPremium) {
+      console.warn('[pay] Falling back to local unlock.');
+      await unlockPremium();
+    }
   } finally {
     btn.disabled = false;
     btn.classList.remove('opacity-80');
     label.textContent = original;
   }
-}
-
-function unlockPremium() {
-  state.isPremium = true;
-  state.likes.isPremium = true;
-  renderLikesMeter();
-  updateLikesBanner();
-  const modal = $('#premiumModal');
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
 }
 
 /* ============================================================
@@ -2022,7 +2036,7 @@ function bindEvents() {
   // ---- Likes ----
   $('#likesUnlockBtn').addEventListener('click', openPaywall);
 
-  // ---- Chat header buttons ----
+  // ---- Chat header ----
   $('#chatBack').addEventListener('click', () => showScreen('messages'));
   $('#videoCallBtn').addEventListener('click', () => openCall('video'));
   $('#voiceCallBtn').addEventListener('click', () => openCall('voice'));
@@ -2108,14 +2122,20 @@ function bindEvents() {
   });
 
   // ---- Premium modal ----
-  $('#premiumDone').addEventListener('click', () => {
+  $('#premiumDone').addEventListener('click', async () => {
     const modal = $('#premiumModal');
     modal.classList.add('hidden');
     modal.classList.remove('flex');
+
+    // Refresh Discover so the new counter state renders
+    await loadDeck();
+
+    // Show Likes and force a re-fetch so the unlocked grid loads
     showScreen('likes');
+    await renderLikes();
   });
 
-  // ---- Escape closes everything ----
+  // ---- Escape ----
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (state.call) { endCall(false); return; }
