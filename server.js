@@ -1,8 +1,5 @@
 /* ============================================================
  *  HEARTHSIDE — server.js
- *  Node.js + Express API on top of Supabase
- * ============================================================
- *  Run:  npm install && npm run dev
  * ============================================================ */
 
 require('dotenv').config();
@@ -28,8 +25,7 @@ const {
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error(
-    '\n[FATAL] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.\n' +
-    'Copy .env.example to .env and fill in your Supabase credentials.\n'
+    '\n[FATAL] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.\n'
   );
   process.exit(1);
 }
@@ -46,12 +42,8 @@ const app = express();
 /* ------------------------------------------------------------
  * 1. MIDDLEWARE
  * ---------------------------------------------------------- */
-
-// CORS — tighten `origin` in production
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
 
-// Tele Birr webhook needs the raw body for signature verification,
-// so it must be mounted BEFORE express.json().
 app.use(
   '/api/payments/telebirr/webhook',
   express.raw({ type: '*/*', limit: '1mb' })
@@ -59,19 +51,13 @@ app.use(
 
 app.use(express.json({ limit: '2mb' }));
 
-/* ------------------------------------------------------------
- * Public config for the browser.
- * Exposes only SUPABASE_URL and the ANON key (both safe to
- * expose — RLS protects the data). NEVER send the service key.
- * ---------------------------------------------------------- */
+/* Public config for the browser */
 app.get('/config.js', (_req, res) => {
   const url = process.env.SUPABASE_URL || '';
   const anon = process.env.SUPABASE_ANON_KEY || '';
-
   if (!url || !anon) {
     console.error('[config.js] SUPABASE_URL or SUPABASE_ANON_KEY is missing');
   }
-
   res.type('application/javascript');
   res.set('Cache-Control', 'no-store');
   res.send(
@@ -81,13 +67,11 @@ app.get('/config.js', (_req, res) => {
   );
 });
 
-// ---- Static frontend ----
-app.use(express.static(path.join(__dirname, '')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 /* ------------------------------------------------------------
  * 2. SUPABASE CLIENTS
  * ---------------------------------------------------------- */
-
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -102,11 +86,8 @@ function supabaseAsUser(token) {
 /* ------------------------------------------------------------
  * 3. HELPERS
  * ---------------------------------------------------------- */
-
 function haversineKm(lat1, lon1, lat2, lon2) {
-  if ([lat1, lon1, lat2, lon2].some((v) => v === null || v === undefined)) {
-    return null;
-  }
+  if ([lat1, lon1, lat2, lon2].some((v) => v === null || v === undefined)) return null;
   const R = 6371;
   const toRad = (d) => (d * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
@@ -141,15 +122,11 @@ function sortPair(a, b) {
 /* ------------------------------------------------------------
  * 4. AUTH MIDDLEWARE
  * ---------------------------------------------------------- */
-
 async function requireAuth(req, res, next) {
   try {
     const header = req.headers.authorization || '';
     const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
-
-    if (!token) {
-      return res.status(401).json({ error: 'Missing bearer token' });
-    }
+    if (!token) return res.status(401).json({ error: 'Missing bearer token' });
 
     const { data, error } = await supabaseAdmin.auth.getUser(token);
     if (error || !data?.user) {
@@ -236,9 +213,7 @@ app.get('/api/discover', requireAuth, async (req, res) => {
       likes: {
         used: me.daily_likes_used,
         limit: me.is_premium ? null : FREE_LIKE_LIMIT,
-        remaining: me.is_premium
-          ? null
-          : Math.max(0, FREE_LIKE_LIMIT - me.daily_likes_used),
+        remaining: me.is_premium ? null : Math.max(0, FREE_LIKE_LIMIT - me.daily_likes_used),
         is_premium: me.is_premium,
       },
     });
@@ -258,31 +233,21 @@ app.post('/api/likes', requireAuth, async (req, res) => {
 
     if (!me) return res.status(404).json({ error: 'Profile not found' });
     if (!likee_id) return res.status(400).json({ error: 'likee_id is required' });
-    if (likee_id === me.id) {
-      return res.status(400).json({ error: 'You cannot like yourself' });
-    }
+    if (likee_id === me.id) return res.status(400).json({ error: 'You cannot like yourself' });
 
     if (is_like === true && !me.is_premium) {
       if (me.daily_likes_used >= FREE_LIKE_LIMIT) {
         return res.status(429).json({
           error: 'Daily like limit reached',
           code: 'LIKE_LIMIT_REACHED',
-          likes: {
-            used: me.daily_likes_used,
-            limit: FREE_LIKE_LIMIT,
-            remaining: 0,
-            is_premium: false,
-          },
+          likes: { used: me.daily_likes_used, limit: FREE_LIKE_LIMIT, remaining: 0, is_premium: false },
         });
       }
     }
 
     const { data: likeRow, error: likeErr } = await supabaseAdmin
       .from('likes')
-      .upsert(
-        { liker_id: me.id, likee_id, is_like },
-        { onConflict: 'liker_id,likee_id' }
-      )
+      .upsert({ liker_id: me.id, likee_id, is_like }, { onConflict: 'liker_id,likee_id' })
       .select('*')
       .single();
 
@@ -302,9 +267,7 @@ app.post('/api/likes', requireAuth, async (req, res) => {
     const likesMeta = {
       used: updatedProfile.daily_likes_used,
       limit: updatedProfile.is_premium ? null : FREE_LIKE_LIMIT,
-      remaining: updatedProfile.is_premium
-        ? null
-        : Math.max(0, FREE_LIKE_LIMIT - updatedProfile.daily_likes_used),
+      remaining: updatedProfile.is_premium ? null : Math.max(0, FREE_LIKE_LIMIT - updatedProfile.daily_likes_used),
       is_premium: updatedProfile.is_premium,
     };
 
@@ -353,13 +316,7 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       .eq('id', likee_id)
       .single();
 
-    res.status(201).json({
-      matched: true,
-      match,
-      partner: other,
-      like: likeRow,
-      likes: likesMeta,
-    });
+    res.status(201).json({ matched: true, match, partner: other, like: likeRow, likes: likesMeta });
   } catch (err) {
     console.error('[POST /api/likes]', err);
     res.status(500).json({ error: 'Failed to record like' });
@@ -383,9 +340,7 @@ app.get('/api/matches', requireAuth, async (req, res) => {
     if (error) throw error;
     if (!rows?.length) return res.json({ matches: [] });
 
-    const partnerIds = rows.map((m) =>
-      m.user1_id === me.id ? m.user2_id : m.user1_id
-    );
+    const partnerIds = rows.map((m) => (m.user1_id === me.id ? m.user2_id : m.user1_id));
 
     const { data: partners, error: pErr } = await supabaseAdmin
       .from('profiles')
@@ -434,7 +389,7 @@ app.get('/api/matches', requireAuth, async (req, res) => {
 });
 
 /* ------------------------------------------------------------
- * DELETE /api/matches/:matchId — unmatch
+ * DELETE /api/matches/:matchId
  * ---------------------------------------------------------- */
 app.delete('/api/matches/:matchId', requireAuth, async (req, res) => {
   try {
@@ -454,7 +409,6 @@ app.delete('/api/matches/:matchId', requireAuth, async (req, res) => {
     }
 
     await supabaseAdmin.from('matches').delete().eq('id', matchId);
-
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /api/matches]', err);
@@ -479,7 +433,6 @@ app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
 
     if (mErr) throw mErr;
     if (!match) return res.status(404).json({ error: 'Match not found' });
-
     if (match.user1_id !== me.id && match.user2_id !== me.id) {
       return res.status(403).json({ error: 'Not a participant of this match' });
     }
@@ -523,9 +476,7 @@ app.post('/api/messages', requireAuth, async (req, res) => {
     const { match_id, content = null, media_url = null } = req.body || {};
 
     if (!match_id) return res.status(400).json({ error: 'match_id is required' });
-    if (!content && !media_url) {
-      return res.status(400).json({ error: 'Provide content or media_url' });
-    }
+    if (!content && !media_url) return res.status(400).json({ error: 'Provide content or media_url' });
 
     const { data: match, error: mErr } = await supabaseAdmin
       .from('matches')
@@ -648,8 +599,15 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
   }
 });
 
+/* ============================================================
+ * PAYMENTS
+ * ============================================================ */
+
 /* ------------------------------------------------------------
  * POST /api/payments/telebirr/initiate
+ *
+ * Resilient: if the `subscriptions` table is missing or fails,
+ * the mock flow still works. Only the live flow needs the table.
  * ---------------------------------------------------------- */
 app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
   try {
@@ -666,19 +624,30 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
     const plan = PLANS[plan_type];
     const txnId = `HS-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
-    const { data: subscription, error } = await supabaseAdmin
-      .from('subscriptions')
-      .insert({
-        user_id: me.id,
-        plan_type,
-        amount_etb: plan.amount_etb,
-        status: 'pending',
-        telebirr_txn_id: txnId,
-      })
-      .select('*')
-      .single();
+    // ---- Try to record the pending subscription (non-fatal on failure) ----
+    let subscription = null;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('subscriptions')
+        .insert({
+          user_id: me.id,
+          plan_type,
+          amount_etb: plan.amount_etb,
+          status: 'pending',
+          telebirr_txn_id: txnId,
+        })
+        .select('*')
+        .single();
 
-    if (error) throw error;
+      if (error) {
+        console.warn('[telebirr/initiate] subscriptions insert failed:', error.message);
+        console.warn('[telebirr/initiate] Continuing anyway — mock mode does not need it.');
+      } else {
+        subscription = data;
+      }
+    } catch (subErr) {
+      console.warn('[telebirr/initiate] subscriptions insert threw:', subErr.message);
+    }
 
     // ---- MOCK MODE ----
     if (!TELEBIRR_API_KEY) {
@@ -722,10 +691,12 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
     const telebirrData = await telebirrRes.json().catch(() => ({}));
 
     if (!telebirrRes.ok) {
-      await supabaseAdmin
-        .from('subscriptions')
-        .update({ status: 'failed' })
-        .eq('id', subscription.id);
+      if (subscription?.id) {
+        await supabaseAdmin
+          .from('subscriptions')
+          .update({ status: 'failed' })
+          .eq('id', subscription.id);
+      }
       return res.status(502).json({
         error: 'Tele Birr order creation failed',
         detail: telebirrData,
@@ -741,7 +712,10 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error('[POST /api/payments/telebirr/initiate]', err);
-    res.status(500).json({ error: 'Failed to initiate payment' });
+    res.status(500).json({
+      error: 'Failed to initiate payment',
+      detail: err.message,
+    });
   }
 });
 
@@ -753,11 +727,8 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
     let body = {};
     const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
     if (raw) {
-      try {
-        body = JSON.parse(raw);
-      } catch {
-        body = Object.fromEntries(new URLSearchParams(raw));
-      }
+      try { body = JSON.parse(raw); }
+      catch { body = Object.fromEntries(new URLSearchParams(raw)); }
     } else if (req.body && typeof req.body === 'object') {
       body = req.body;
     }
@@ -774,17 +745,12 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
       }
     }
 
-    const txnId =
-      body.outTradeNo || body.txn_id || body.merchantOrderId || body.tradeNo;
+    const txnId = body.outTradeNo || body.txn_id || body.merchantOrderId || body.tradeNo;
     const rawStatus = String(body.status || body.tradeStatus || '').toLowerCase();
 
-    if (!txnId) {
-      return res.status(400).json({ error: 'Missing transaction reference' });
-    }
+    if (!txnId) return res.status(400).json({ error: 'Missing transaction reference' });
 
-    const succeeded = ['success', 'successful', 'paid', 'completed', '0000', '2'].includes(
-      rawStatus
-    );
+    const succeeded = ['success', 'successful', 'paid', 'completed', '0000', '2'].includes(rawStatus);
 
     const { data: sub, error: subErr } = await supabaseAdmin
       .from('subscriptions')
@@ -799,10 +765,7 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
     }
 
     if (!succeeded) {
-      await supabaseAdmin
-        .from('subscriptions')
-        .update({ status: 'failed' })
-        .eq('id', sub.id);
+      await supabaseAdmin.from('subscriptions').update({ status: 'failed' }).eq('id', sub.id);
       return res.json({ received: true, status: 'failed' });
     }
 
@@ -839,43 +802,41 @@ app.post('/api/payments/telebirr/webhook', async (req, res) => {
 
 /* ------------------------------------------------------------
  * POST /api/payments/mock-confirm
- * Activates premium without a real Tele Birr call.
- * Only allowed when Tele Birr credentials are NOT configured.
+ *
+ * Does NOT require a `subscriptions` row. Just unlocks premium.
+ * Only active when Tele Birr credentials are not configured.
  * ---------------------------------------------------------- */
 app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
   if (TELEBIRR_API_KEY) {
     return res.status(403).json({
-      error: 'Mock confirmation is disabled because Tele Birr is configured. Use the real webhook.',
+      error: 'Mock confirmation is disabled because Tele Birr is configured.',
     });
   }
 
   try {
     const { txn_id } = req.body || {};
-    if (!txn_id) return res.status(400).json({ error: 'txn_id is required' });
 
-    const { data: sub, error: subErr } = await supabaseAdmin
-      .from('subscriptions')
-      .select('*')
-      .eq('telebirr_txn_id', txn_id)
-      .eq('user_id', req.profile.id)
-      .maybeSingle();
-
-    if (subErr) throw subErr;
-    if (!sub) return res.status(404).json({ error: 'Unknown transaction' });
-
-    const plan = PLANS[sub.plan_type] || PLANS.monthly;
     const startedAt = new Date();
-    const expiresAt = new Date(startedAt.getTime() + plan.days * 86400 * 1000);
+    const expiresAt = new Date(startedAt.getTime() + 30 * 86400 * 1000);
 
-    await supabaseAdmin
-      .from('subscriptions')
-      .update({
-        status: 'active',
-        started_at: startedAt.toISOString(),
-        expires_at: expiresAt.toISOString(),
-      })
-      .eq('id', sub.id);
+    // ---- Best-effort: update the subscription row if it exists ----
+    if (txn_id) {
+      try {
+        await supabaseAdmin
+          .from('subscriptions')
+          .update({
+            status: 'active',
+            started_at: startedAt.toISOString(),
+            expires_at: expiresAt.toISOString(),
+          })
+          .eq('telebirr_txn_id', txn_id)
+          .eq('user_id', req.profile.id);
+      } catch (subErr) {
+        console.warn('[mock-confirm] subscriptions update failed (non-fatal):', subErr.message);
+      }
+    }
 
+    // ---- The important part: unlock premium ----
     const { data: profile, error: pErr } = await supabaseAdmin
       .from('profiles')
       .update({
@@ -894,11 +855,14 @@ app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
     res.json({
       is_premium: true,
       profile,
-      subscription: { ...sub, status: 'active' },
+      subscription: txn_id ? { telebirr_txn_id: txn_id, status: 'active' } : null,
     });
   } catch (err) {
     console.error('[POST /api/payments/mock-confirm]', err);
-    res.status(500).json({ error: 'Mock confirmation failed' });
+    res.status(500).json({
+      error: 'Mock confirmation failed',
+      detail: err.message,
+    });
   }
 });
 
