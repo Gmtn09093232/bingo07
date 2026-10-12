@@ -67,7 +67,7 @@ app.get('/config.js', (_req, res) => {
   );
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '')));
 
 /* ------------------------------------------------------------
  * 2. SUPABASE CLIENTS
