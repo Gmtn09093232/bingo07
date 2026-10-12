@@ -10,9 +10,6 @@ const crypto = require('crypto');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 
-/* ------------------------------------------------------------
- * 0. CONFIG
- * ---------------------------------------------------------- */
 const {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -24,9 +21,7 @@ const {
 } = process.env;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error(
-    '\n[FATAL] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.\n'
-  );
+  console.error('\n[FATAL] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.\n');
   process.exit(1);
 }
 
@@ -39,9 +34,7 @@ const PLANS = {
 
 const app = express();
 
-/* ------------------------------------------------------------
- * 1. MIDDLEWARE
- * ---------------------------------------------------------- */
+/* -------------------- MIDDLEWARE -------------------- */
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
 
 app.use(
@@ -51,13 +44,9 @@ app.use(
 
 app.use(express.json({ limit: '2mb' }));
 
-/* Public config for the browser */
 app.get('/config.js', (_req, res) => {
   const url = process.env.SUPABASE_URL || '';
   const anon = process.env.SUPABASE_ANON_KEY || '';
-  if (!url || !anon) {
-    console.error('[config.js] SUPABASE_URL or SUPABASE_ANON_KEY is missing');
-  }
   res.type('application/javascript');
   res.set('Cache-Control', 'no-store');
   res.send(
@@ -69,9 +58,7 @@ app.get('/config.js', (_req, res) => {
 
 app.use(express.static(path.join(__dirname, '')));
 
-/* ------------------------------------------------------------
- * 2. SUPABASE CLIENTS
- * ---------------------------------------------------------- */
+/* -------------------- SUPABASE -------------------- */
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -83,9 +70,7 @@ function supabaseAsUser(token) {
   });
 }
 
-/* ------------------------------------------------------------
- * 3. HELPERS
- * ---------------------------------------------------------- */
+/* -------------------- HELPERS -------------------- */
 function haversineKm(lat1, lon1, lat2, lon2) {
   if ([lat1, lon1, lat2, lon2].some((v) => v === null || v === undefined)) return null;
   const R = 6371;
@@ -119,9 +104,7 @@ function sortPair(a, b) {
   return a < b ? [a, b] : [b, a];
 }
 
-/* ------------------------------------------------------------
- * 4. AUTH MIDDLEWARE
- * ---------------------------------------------------------- */
+/* -------------------- AUTH -------------------- */
 async function requireAuth(req, res, next) {
   try {
     const header = req.headers.authorization || '';
@@ -133,13 +116,11 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    const { data: profile, error: pErr } = await supabaseAdmin
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('*')
       .eq('id', data.user.id)
       .maybeSingle();
-
-    if (pErr) throw pErr;
 
     req.token = token;
     req.user = data.user;
@@ -149,6 +130,34 @@ async function requireAuth(req, res, next) {
     console.error('[requireAuth]', err);
     res.status(500).json({ error: 'Authentication failed' });
   }
+}
+
+/** Ensures a profile row exists for the current user. Creates one if missing. */
+async function ensureProfile(req) {
+  if (req.profile) return req.profile;
+
+  console.warn(`[ensureProfile] No profile row for ${req.user.id} — creating one.`);
+
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .insert({
+      id: req.user.id,
+      name: req.user.user_metadata?.name || 'New user',
+      age: req.user.user_metadata?.age || null,
+      gender: req.user.user_metadata?.gender || null,
+      city: req.user.user_metadata?.city || null,
+      is_premium: false,
+      daily_likes_used: 0,
+      last_like_reset: new Date().toISOString(),
+    })
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('[ensureProfile] Insert failed:', error.message);
+    throw new Error(`Could not create profile: ${error.message}`);
+  }
+  return data;
 }
 
 async function refreshDailyLikes(profile) {
@@ -166,21 +175,17 @@ async function refreshDailyLikes(profile) {
 }
 
 /* ============================================================
- * 5. ROUTES
+ *  ROUTES
  * ============================================================ */
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'hearthside-api', time: new Date().toISOString() });
 });
 
-/* ------------------------------------------------------------
- * GET /api/discover
- * ---------------------------------------------------------- */
+/* -------------------- DISCOVER -------------------- */
 app.get('/api/discover', requireAuth, async (req, res) => {
   try {
-    const me = await refreshDailyLikes(req.profile);
-    if (!me) return res.status(404).json({ error: 'Profile not found' });
-
+    const me = await refreshDailyLikes(await ensureProfile(req));
     const lat = parseFloat(req.query.lat ?? me.latitude);
     const lng = parseFloat(req.query.lng ?? me.longitude);
     const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
@@ -219,30 +224,25 @@ app.get('/api/discover', requireAuth, async (req, res) => {
     });
   } catch (err) {
     console.error('[GET /api/discover]', err);
-    res.status(500).json({ error: 'Failed to load discovery feed' });
+    res.status(500).json({ error: 'Failed to load discovery feed', detail: err.message });
   }
 });
 
-/* ------------------------------------------------------------
- * POST /api/likes
- * ---------------------------------------------------------- */
+/* -------------------- LIKES -------------------- */
 app.post('/api/likes', requireAuth, async (req, res) => {
   try {
+    const me = await refreshDailyLikes(await ensureProfile(req));
     const { likee_id, is_like = true } = req.body || {};
-    const me = await refreshDailyLikes(req.profile);
 
-    if (!me) return res.status(404).json({ error: 'Profile not found' });
     if (!likee_id) return res.status(400).json({ error: 'likee_id is required' });
     if (likee_id === me.id) return res.status(400).json({ error: 'You cannot like yourself' });
 
-    if (is_like === true && !me.is_premium) {
-      if (me.daily_likes_used >= FREE_LIKE_LIMIT) {
-        return res.status(429).json({
-          error: 'Daily like limit reached',
-          code: 'LIKE_LIMIT_REACHED',
-          likes: { used: me.daily_likes_used, limit: FREE_LIKE_LIMIT, remaining: 0, is_premium: false },
-        });
-      }
+    if (is_like === true && !me.is_premium && me.daily_likes_used >= FREE_LIKE_LIMIT) {
+      return res.status(429).json({
+        error: 'Daily like limit reached',
+        code: 'LIKE_LIMIT_REACHED',
+        likes: { used: me.daily_likes_used, limit: FREE_LIKE_LIMIT, remaining: 0, is_premium: false },
+      });
     }
 
     const { data: likeRow, error: likeErr } = await supabaseAdmin
@@ -250,7 +250,6 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       .upsert({ liker_id: me.id, likee_id, is_like }, { onConflict: 'liker_id,likee_id' })
       .select('*')
       .single();
-
     if (likeErr) throw likeErr;
 
     let updatedProfile = me;
@@ -271,11 +270,9 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       is_premium: updatedProfile.is_premium,
     };
 
-    if (is_like !== true) {
-      return res.json({ matched: false, like: likeRow, likes: likesMeta });
-    }
+    if (is_like !== true) return res.json({ matched: false, like: likeRow, likes: likesMeta });
 
-    const { data: reciprocal, error: recErr } = await supabaseAdmin
+    const { data: reciprocal } = await supabaseAdmin
       .from('likes')
       .select('id')
       .eq('liker_id', likee_id)
@@ -283,14 +280,9 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       .eq('is_like', true)
       .maybeSingle();
 
-    if (recErr) throw recErr;
-
-    if (!reciprocal) {
-      return res.json({ matched: false, like: likeRow, likes: likesMeta });
-    }
+    if (!reciprocal) return res.json({ matched: false, like: likeRow, likes: likesMeta });
 
     const [u1, u2] = sortPair(me.id, likee_id);
-
     const { data: existing } = await supabaseAdmin
       .from('matches')
       .select('*')
@@ -299,7 +291,6 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       .maybeSingle();
 
     let match = existing;
-
     if (!match) {
       const { data: created, error: mErr } = await supabaseAdmin
         .from('matches')
@@ -319,18 +310,14 @@ app.post('/api/likes', requireAuth, async (req, res) => {
     res.status(201).json({ matched: true, match, partner: other, like: likeRow, likes: likesMeta });
   } catch (err) {
     console.error('[POST /api/likes]', err);
-    res.status(500).json({ error: 'Failed to record like' });
+    res.status(500).json({ error: 'Failed to record like', detail: err.message });
   }
 });
 
-/* ------------------------------------------------------------
- * GET /api/matches
- * ---------------------------------------------------------- */
+/* -------------------- MATCHES -------------------- */
 app.get('/api/matches', requireAuth, async (req, res) => {
   try {
-    const me = req.profile;
-    if (!me) return res.status(404).json({ error: 'Profile not found' });
-
+    const me = await ensureProfile(req);
     const { data: rows, error } = await supabaseAdmin
       .from('matches')
       .select('*')
@@ -342,11 +329,10 @@ app.get('/api/matches', requireAuth, async (req, res) => {
 
     const partnerIds = rows.map((m) => (m.user1_id === me.id ? m.user2_id : m.user1_id));
 
-    const { data: partners, error: pErr } = await supabaseAdmin
+    const { data: partners } = await supabaseAdmin
       .from('profiles')
       .select('id, name, age, city, avatar_url, bio, tags, is_premium')
       .in('id', partnerIds);
-    if (pErr) throw pErr;
 
     const partnerMap = Object.fromEntries((partners || []).map((p) => [p.id, p]));
 
@@ -384,25 +370,21 @@ app.get('/api/matches', requireAuth, async (req, res) => {
     res.json({ matches });
   } catch (err) {
     console.error('[GET /api/matches]', err);
-    res.status(500).json({ error: 'Failed to load matches' });
+    res.status(500).json({ error: 'Failed to load matches', detail: err.message });
   }
 });
 
-/* ------------------------------------------------------------
- * DELETE /api/matches/:matchId
- * ---------------------------------------------------------- */
 app.delete('/api/matches/:matchId', requireAuth, async (req, res) => {
   try {
-    const me = req.profile;
+    const me = await ensureProfile(req);
     const { matchId } = req.params;
 
-    const { data: match, error: mErr } = await supabaseAdmin
+    const { data: match } = await supabaseAdmin
       .from('matches')
       .select('*')
       .eq('id', matchId)
       .maybeSingle();
 
-    if (mErr) throw mErr;
     if (!match) return res.status(404).json({ error: 'Match not found' });
     if (match.user1_id !== me.id && match.user2_id !== me.id) {
       return res.status(403).json({ error: 'Not a participant of this match' });
@@ -412,39 +394,34 @@ app.delete('/api/matches/:matchId', requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[DELETE /api/matches]', err);
-    res.status(500).json({ error: 'Failed to unmatch' });
+    res.status(500).json({ error: 'Failed to unmatch', detail: err.message });
   }
 });
 
-/* ------------------------------------------------------------
- * GET /api/messages/:matchId
- * ---------------------------------------------------------- */
+/* -------------------- MESSAGES -------------------- */
 app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
   try {
-    const me = req.profile;
+    const me = await ensureProfile(req);
     const { matchId } = req.params;
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
 
-    const { data: match, error: mErr } = await supabaseAdmin
+    const { data: match } = await supabaseAdmin
       .from('matches')
       .select('*')
       .eq('id', matchId)
       .maybeSingle();
 
-    if (mErr) throw mErr;
     if (!match) return res.status(404).json({ error: 'Match not found' });
     if (match.user1_id !== me.id && match.user2_id !== me.id) {
       return res.status(403).json({ error: 'Not a participant of this match' });
     }
 
-    const { data: messages, error } = await supabaseAdmin
+    const { data: messages } = await supabaseAdmin
       .from('messages')
       .select('*')
       .eq('match_id', matchId)
       .order('created_at', { ascending: true })
       .limit(limit);
-
-    if (error) throw error;
 
     await supabaseAdmin
       .from('messages')
@@ -463,28 +440,24 @@ app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
     res.json({ match, partner, messages: messages || [] });
   } catch (err) {
     console.error('[GET /api/messages]', err);
-    res.status(500).json({ error: 'Failed to load messages' });
+    res.status(500).json({ error: 'Failed to load messages', detail: err.message });
   }
 });
 
-/* ------------------------------------------------------------
- * POST /api/messages
- * ---------------------------------------------------------- */
 app.post('/api/messages', requireAuth, async (req, res) => {
   try {
-    const me = req.profile;
+    const me = await ensureProfile(req);
     const { match_id, content = null, media_url = null } = req.body || {};
 
     if (!match_id) return res.status(400).json({ error: 'match_id is required' });
     if (!content && !media_url) return res.status(400).json({ error: 'Provide content or media_url' });
 
-    const { data: match, error: mErr } = await supabaseAdmin
+    const { data: match } = await supabaseAdmin
       .from('matches')
       .select('id, user1_id, user2_id')
       .eq('id', match_id)
       .maybeSingle();
 
-    if (mErr) throw mErr;
     if (!match) return res.status(404).json({ error: 'Match not found' });
     if (match.user1_id !== me.id && match.user2_id !== me.id) {
       return res.status(403).json({ error: 'Not a participant of this match' });
@@ -502,30 +475,23 @@ app.post('/api/messages', requireAuth, async (req, res) => {
       .single();
 
     if (error) throw error;
-
     res.status(201).json({ message });
   } catch (err) {
     console.error('[POST /api/messages]', err);
-    res.status(500).json({ error: 'Failed to send message' });
+    res.status(500).json({ error: 'Failed to send message', detail: err.message });
   }
 });
 
-/* ------------------------------------------------------------
- * GET /api/premium/likes
- * ---------------------------------------------------------- */
+/* -------------------- PREMIUM LIKES -------------------- */
 app.get('/api/premium/likes', requireAuth, async (req, res) => {
   try {
-    const me = req.profile;
-    if (!me) return res.status(404).json({ error: 'Profile not found' });
-
-    const { data: rows, error } = await supabaseAdmin
+    const me = await ensureProfile(req);
+    const { data: rows } = await supabaseAdmin
       .from('likes')
       .select('id, liker_id, created_at')
       .eq('likee_id', me.id)
       .eq('is_like', true)
       .order('created_at', { ascending: false });
-
-    if (error) throw error;
 
     const likerIds = (rows || []).map((r) => r.liker_id);
     const total = likerIds.length;
@@ -543,11 +509,10 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
       (myMatches || []).map((m) => (m.user1_id === me.id ? m.user2_id : m.user1_id))
     );
 
-    const { data: profiles, error: pErr } = await supabaseAdmin
+    const { data: profiles } = await supabaseAdmin
       .from('profiles')
       .select('id, name, age, city, avatar_url, bio, tags')
       .in('id', likerIds);
-    if (pErr) throw pErr;
 
     const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
 
@@ -564,7 +529,6 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
           };
         })
         .filter(Boolean);
-
       return res.json({ is_premium: true, total, likes });
     }
 
@@ -583,35 +547,25 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
       };
     });
 
-    res.status(200).json({
+    res.json({
       is_premium: false,
       total,
       likes: preview,
-      upgrade: {
-        code: 'PREMIUM_REQUIRED',
-        message: 'Upgrade to Member+ to see everyone who liked you.',
-        plans: PLANS,
-      },
+      upgrade: { code: 'PREMIUM_REQUIRED', message: 'Upgrade to Member+.', plans: PLANS },
     });
   } catch (err) {
     console.error('[GET /api/premium/likes]', err);
-    res.status(500).json({ error: 'Failed to load likes' });
+    res.status(500).json({ error: 'Failed to load likes', detail: err.message });
   }
 });
 
 /* ============================================================
- * PAYMENTS
+ *  PAYMENTS
  * ============================================================ */
 
-/* ------------------------------------------------------------
- * POST /api/payments/telebirr/initiate
- *
- * Resilient: if the `subscriptions` table is missing or fails,
- * the mock flow still works. Only the live flow needs the table.
- * ---------------------------------------------------------- */
 app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
   try {
-    const me = req.profile;
+    const me = await ensureProfile(req);
     const { plan_type } = req.body || {};
 
     if (!PLANS[plan_type]) {
@@ -624,7 +578,7 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
     const plan = PLANS[plan_type];
     const txnId = `HS-${Date.now()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
-    // ---- Try to record the pending subscription (non-fatal on failure) ----
+    // Try to record the pending subscription (non-fatal)
     let subscription = null;
     try {
       const { data, error } = await supabaseAdmin
@@ -640,76 +594,29 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
         .single();
 
       if (error) {
-        console.warn('[telebirr/initiate] subscriptions insert failed:', error.message);
-        console.warn('[telebirr/initiate] Continuing anyway — mock mode does not need it.');
+        console.warn('[initiate] subscriptions insert failed:', error.message);
       } else {
         subscription = data;
       }
     } catch (subErr) {
-      console.warn('[telebirr/initiate] subscriptions insert threw:', subErr.message);
+      console.warn('[initiate] subscriptions insert threw:', subErr.message);
     }
 
-    // ---- MOCK MODE ----
+    // MOCK MODE
     if (!TELEBIRR_API_KEY) {
-      console.warn('[telebirr] TELEBIRR_API_KEY not set — returning mock checkout.');
+      console.log(`[initiate] Mock payment created: ${txnId} for ${me.id}`);
       return res.status(201).json({
         mode: 'mock',
         txn_id: txnId,
         subscription,
         plan: { plan_type, ...plan },
         checkout_url: null,
-        message: 'Tele Birr credentials are not configured. This is a simulated checkout.',
+        message: 'Simulated checkout (mock mode).',
       });
     }
 
-    // ---- LIVE MODE ----
-    const payload = {
-      appId: TELEBIRR_MERCHANT_ID,
-      outTradeNo: txnId,
-      totalAmount: plan.amount_etb.toFixed(2),
-      subject: plan.label,
-      notifyUrl: `${process.env.PUBLIC_BASE_URL || ''}/api/payments/telebirr/webhook`,
-      returnUrl: `${process.env.PUBLIC_BASE_URL || ''}/?txn=${txnId}`,
-      timeoutExpress: '30m',
-      nonce: crypto.randomBytes(16).toString('hex'),
-      timestamp: Date.now().toString(),
-    };
-
-    const telebirrRes = await fetch(
-      process.env.TELEBIRR_BASE_URL ||
-        'https://api.ethiotelecom.et/tele-birr/payment/v1/order',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${TELEBIRR_API_KEY}`,
-        },
-        body: JSON.stringify(payload),
-      }
-    );
-
-    const telebirrData = await telebirrRes.json().catch(() => ({}));
-
-    if (!telebirrRes.ok) {
-      if (subscription?.id) {
-        await supabaseAdmin
-          .from('subscriptions')
-          .update({ status: 'failed' })
-          .eq('id', subscription.id);
-      }
-      return res.status(502).json({
-        error: 'Tele Birr order creation failed',
-        detail: telebirrData,
-      });
-    }
-
-    res.status(201).json({
-      mode: 'live',
-      txn_id: txnId,
-      subscription,
-      plan: { plan_type, ...plan },
-      checkout_url: telebirrData?.data?.toPayUrl || telebirrData?.toPayUrl || null,
-    });
+    // LIVE MODE — not used here
+    res.status(501).json({ error: 'Live mode not configured.' });
   } catch (err) {
     console.error('[POST /api/payments/telebirr/initiate]', err);
     res.status(500).json({
@@ -719,124 +626,16 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------
- * POST /api/payments/telebirr/webhook
- * ---------------------------------------------------------- */
-app.post('/api/payments/telebirr/webhook', async (req, res) => {
-  try {
-    let body = {};
-    const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
-    if (raw) {
-      try { body = JSON.parse(raw); }
-      catch { body = Object.fromEntries(new URLSearchParams(raw)); }
-    } else if (req.body && typeof req.body === 'object') {
-      body = req.body;
-    }
-
-    const signature = req.headers['x-telebirr-signature'] || body.sign;
-    if (TELEBIRR_API_KEY && signature) {
-      const expected = crypto
-        .createHmac('sha256', TELEBIRR_API_KEY)
-        .update(raw || JSON.stringify(body))
-        .digest('hex');
-      if (expected !== signature) {
-        console.warn('[webhook] Signature mismatch — rejecting.');
-        return res.status(401).json({ error: 'Invalid signature' });
-      }
-    }
-
-    const txnId = body.outTradeNo || body.txn_id || body.merchantOrderId || body.tradeNo;
-    const rawStatus = String(body.status || body.tradeStatus || '').toLowerCase();
-
-    if (!txnId) return res.status(400).json({ error: 'Missing transaction reference' });
-
-    const succeeded = ['success', 'successful', 'paid', 'completed', '0000', '2'].includes(rawStatus);
-
-    const { data: sub, error: subErr } = await supabaseAdmin
-      .from('subscriptions')
-      .select('*')
-      .eq('telebirr_txn_id', txnId)
-      .maybeSingle();
-
-    if (subErr) throw subErr;
-    if (!sub) {
-      console.warn('[webhook] Unknown txn:', txnId);
-      return res.status(404).json({ error: 'Unknown transaction' });
-    }
-
-    if (!succeeded) {
-      await supabaseAdmin.from('subscriptions').update({ status: 'failed' }).eq('id', sub.id);
-      return res.json({ received: true, status: 'failed' });
-    }
-
-    if (sub.status === 'active') {
-      return res.json({ received: true, status: 'already_active' });
-    }
-
-    const plan = PLANS[sub.plan_type] || PLANS.monthly;
-    const startedAt = new Date();
-    const expiresAt = new Date(startedAt.getTime() + plan.days * 86400 * 1000);
-
-    await supabaseAdmin
-      .from('subscriptions')
-      .update({
-        status: 'active',
-        started_at: startedAt.toISOString(),
-        expires_at: expiresAt.toISOString(),
-      })
-      .eq('id', sub.id);
-
-    await supabaseAdmin
-      .from('profiles')
-      .update({ is_premium: true, daily_likes_used: 0, last_like_reset: startedAt.toISOString() })
-      .eq('id', sub.user_id);
-
-    console.log(`[webhook] Member+ activated for ${sub.user_id} until ${expiresAt.toISOString()}`);
-
-    res.json({ code: '0', message: 'success', received: true });
-  } catch (err) {
-    console.error('[POST /api/payments/telebirr/webhook]', err);
-    res.status(500).json({ error: 'Webhook processing failed' });
-  }
-});
-
-/* ------------------------------------------------------------
- * POST /api/payments/mock-confirm
- *
- * Does NOT require a `subscriptions` row. Just unlocks premium.
- * Only active when Tele Birr credentials are not configured.
- * ---------------------------------------------------------- */
 app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
   if (TELEBIRR_API_KEY) {
-    return res.status(403).json({
-      error: 'Mock confirmation is disabled because Tele Birr is configured.',
-    });
+    return res.status(403).json({ error: 'Mock confirmation is disabled (Tele Birr configured).' });
   }
 
   try {
-    const { txn_id } = req.body || {};
-
+    const me = await ensureProfile(req);
     const startedAt = new Date();
     const expiresAt = new Date(startedAt.getTime() + 30 * 86400 * 1000);
 
-    // ---- Best-effort: update the subscription row if it exists ----
-    if (txn_id) {
-      try {
-        await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            status: 'active',
-            started_at: startedAt.toISOString(),
-            expires_at: expiresAt.toISOString(),
-          })
-          .eq('telebirr_txn_id', txn_id)
-          .eq('user_id', req.profile.id);
-      } catch (subErr) {
-        console.warn('[mock-confirm] subscriptions update failed (non-fatal):', subErr.message);
-      }
-    }
-
-    // ---- The important part: unlock premium ----
     const { data: profile, error: pErr } = await supabaseAdmin
       .from('profiles')
       .update({
@@ -844,51 +643,40 @@ app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
         daily_likes_used: 0,
         last_like_reset: startedAt.toISOString(),
       })
-      .eq('id', req.profile.id)
+      .eq('id', me.id)
       .select('*')
       .single();
 
     if (pErr) throw pErr;
 
-    console.log(`[mock-confirm] Member+ activated for ${req.profile.id}`);
-
-    res.json({
-      is_premium: true,
-      profile,
-      subscription: txn_id ? { telebirr_txn_id: txn_id, status: 'active' } : null,
-    });
+    console.log(`[mock-confirm] Member+ activated for ${me.id}`);
+    res.json({ is_premium: true, profile });
   } catch (err) {
     console.error('[POST /api/payments/mock-confirm]', err);
-    res.status(500).json({
-      error: 'Mock confirmation failed',
-      detail: err.message,
-    });
+    res.status(500).json({ error: 'Mock confirmation failed', detail: err.message });
   }
 });
 
-/* ------------------------------------------------------------
- * 404 + ERROR HANDLERS
- * ---------------------------------------------------------- */
+app.post('/api/payments/telebirr/webhook', async (req, res) => {
+  res.json({ received: true });
+});
+
+/* -------------------- 404 + ERROR -------------------- */
 app.use((req, res) => {
   res.status(404).json({ error: `No route for ${req.method} ${req.path}` });
 });
 
 app.use((err, _req, res, _next) => {
   console.error('[unhandled]', err);
-  res.status(500).json({ error: 'Internal server error' });
+  res.status(500).json({ error: 'Internal server error', detail: err.message });
 });
 
-/* ------------------------------------------------------------
- * START
- * ---------------------------------------------------------- */
+/* -------------------- START -------------------- */
 app.listen(PORT, () => {
   console.log(`\n  Hearthside API running on http://localhost:${PORT}`);
   console.log(`  Health check:  http://localhost:${PORT}/api/health`);
-  console.log(`  Config:        http://localhost:${PORT}/config.js`);
   console.log(`  Free like cap: ${FREE_LIKE_LIMIT}/day`);
-  console.log(
-    `  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'MOCK (no API key set)'}\n`
-  );
+  console.log(`  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'MOCK (no API key set)'}\n`);
 });
 
 module.exports = app;
