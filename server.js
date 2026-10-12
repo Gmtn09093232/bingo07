@@ -10,6 +10,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 
 /* ------------------------------------------------------------
@@ -57,7 +58,9 @@ app.use(
 );
 
 app.use(express.json({ limit: '2mb' }));
-const path = require('path');
+
+// ---- Static frontend ----
+// Serves public/index.html at "/" and any assets under public/
 app.use(express.static(path.join(__dirname, '')));
 
 /* ------------------------------------------------------------
