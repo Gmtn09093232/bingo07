@@ -1,6 +1,5 @@
 /* ============================================================
  *  HEARTHSIDE — server.js
- *  Node.js + Express API on top of Supabase
  * ============================================================ */
 
 require('dotenv').config();
@@ -16,7 +15,6 @@ const {
   SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY,
   TELEBIRR_API_KEY,
-  TELEBIRR_MERCHANT_ID,
   PORT = 3000,
   FREE_DAILY_LIKES = '8',
 } = process.env;
@@ -27,7 +25,6 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 }
 
 const FREE_LIKE_LIMIT = parseInt(FREE_DAILY_LIKES, 10) || 8;
-
 const PLANS = {
   monthly: { amount_etb: 450, days: 30, label: 'Member+ Monthly' },
   yearly:  { amount_etb: 4500, days: 365, label: 'Member+ Yearly' },
@@ -35,25 +32,14 @@ const PLANS = {
 
 const app = express();
 
-/* ------------------------------------------------------------
- * 1. MIDDLEWARE
- * ---------------------------------------------------------- */
+/* -------------------- MIDDLEWARE -------------------- */
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
-
-app.use(
-  '/api/payments/telebirr/webhook',
-  express.raw({ type: '*/*', limit: '1mb' })
-);
-
+app.use('/api/payments/telebirr/webhook', express.raw({ type: '*/*', limit: '1mb' }));
 app.use(express.json({ limit: '2mb' }));
 
-/* Public config for the browser */
 app.get('/config.js', (_req, res) => {
   const url = process.env.SUPABASE_URL || '';
   const anon = process.env.SUPABASE_ANON_KEY || '';
-  if (!url || !anon) {
-    console.error('[config.js] SUPABASE_URL or SUPABASE_ANON_KEY is missing');
-  }
   res.type('application/javascript');
   res.set('Cache-Control', 'no-store');
   res.send(
@@ -63,11 +49,9 @@ app.get('/config.js', (_req, res) => {
   );
 });
 
-app.use(express.static(path.join(__dirname, '')));
+app.use(express.static(path.join(__dirname, 'public')));
 
-/* ------------------------------------------------------------
- * 2. SUPABASE CLIENTS
- * ---------------------------------------------------------- */
+/* -------------------- SUPABASE -------------------- */
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
@@ -79,21 +63,7 @@ function supabaseAsUser(token) {
   });
 }
 
-/* ------------------------------------------------------------
- * 3. HELPERS
- * ---------------------------------------------------------- */
-function haversineKm(lat1, lon1, lat2, lon2) {
-  if ([lat1, lon1, lat2, lon2].some((v) => v === null || v === undefined)) return null;
-  const R = 6371;
-  const toRad = (d) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.asin(Math.sqrt(a));
-}
-
+/* -------------------- HELPERS -------------------- */
 function formatDistance(km) {
   if (km === null || km === undefined) return null;
   if (km < 1) return 'less than 1 km away';
@@ -111,13 +81,9 @@ function isNewDay(lastReset) {
   );
 }
 
-function sortPair(a, b) {
-  return a < b ? [a, b] : [b, a];
-}
+function sortPair(a, b) { return a < b ? [a, b] : [b, a]; }
 
-/* ------------------------------------------------------------
- * 4. AUTH MIDDLEWARE
- * ---------------------------------------------------------- */
+/* -------------------- AUTH -------------------- */
 async function requireAuth(req, res, next) {
   try {
     const header = req.headers.authorization || '';
@@ -125,15 +91,10 @@ async function requireAuth(req, res, next) {
     if (!token) return res.status(401).json({ error: 'Missing bearer token' });
 
     const { data, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !data?.user) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
+    if (error || !data?.user) return res.status(401).json({ error: 'Invalid or expired token' });
 
     const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .maybeSingle();
+      .from('profiles').select('*').eq('id', data.user.id).maybeSingle();
 
     req.token = token;
     req.user = data.user;
@@ -145,11 +106,9 @@ async function requireAuth(req, res, next) {
   }
 }
 
-/** Ensure a profile row exists for the current user. Creates one if missing. */
 async function ensureProfile(req) {
   if (req.profile) return req.profile;
-
-  console.warn(`[ensureProfile] No profile row for ${req.user.id} — creating one.`);
+  console.warn(`[ensureProfile] Creating profile for ${req.user.id}`);
 
   const { data, error } = await supabaseAdmin
     .from('profiles')
@@ -166,10 +125,7 @@ async function ensureProfile(req) {
     .select('*')
     .single();
 
-  if (error) {
-    console.error('[ensureProfile] Insert failed:', error.message);
-    throw new Error(`Could not create profile: ${error.message}`);
-  }
+  if (error) throw new Error(`Could not create profile: ${error.message}`);
   req.profile = data;
   return data;
 }
@@ -180,25 +136,107 @@ async function refreshDailyLikes(profile) {
     const { data } = await supabaseAdmin
       .from('profiles')
       .update({ daily_likes_used: 0, last_like_reset: new Date().toISOString() })
-      .eq('id', profile.id)
-      .select('*')
-      .single();
+      .eq('id', profile.id).select('*').single();
     return data || { ...profile, daily_likes_used: 0 };
   }
   return profile;
 }
 
 /* ============================================================
- * 5. ROUTES
+ *  ROUTES
  * ============================================================ */
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'hearthside-api', time: new Date().toISOString() });
 });
 
-/* ------------------------------------------------------------
- * GET /api/discover
- * ---------------------------------------------------------- */
+/* -------------------- PROFILE -------------------- */
+
+/** GET /api/profiles/me — the current user's full profile. */
+app.get('/api/profiles/me', requireAuth, async (req, res) => {
+  try {
+    const me = await ensureProfile(req);
+    res.json({ profile: me });
+  } catch (err) {
+    console.error('[GET /api/profiles/me]', err);
+    res.status(500).json({ error: 'Failed to load profile', detail: err.message });
+  }
+});
+
+/** PUT /api/profiles/me — update the current user's editable fields. */
+app.put('/api/profiles/me', requireAuth, async (req, res) => {
+  try {
+    const me = await ensureProfile(req);
+    const { name, age, gender, city, bio, tags, avatar_url, latitude, longitude } = req.body || {};
+
+    const patch = {};
+
+    if (typeof name === 'string') {
+      const trimmed = name.trim().slice(0, 60);
+      if (!trimmed) return res.status(400).json({ error: 'Name cannot be empty' });
+      patch.name = trimmed;
+    }
+
+    if (age !== undefined && age !== null && age !== '') {
+      const n = parseInt(age, 10);
+      if (Number.isNaN(n) || n < 18 || n > 120) {
+        return res.status(400).json({ error: 'Age must be between 18 and 120' });
+      }
+      patch.age = n;
+    }
+
+    if (typeof gender === 'string') {
+      const g = gender.trim().toLowerCase();
+      if (!['woman', 'man', 'non-binary', 'other'].includes(g)) {
+        return res.status(400).json({ error: 'Invalid gender' });
+      }
+      patch.gender = g;
+    }
+
+    if (typeof city === 'string') patch.city = city.trim().slice(0, 80);
+    if (typeof bio === 'string') patch.bio = bio.trim().slice(0, 500);
+
+    if (Array.isArray(tags)) {
+      patch.tags = tags
+        .map((t) => String(t).trim())
+        .filter(Boolean)
+        .slice(0, 8)
+        .map((t) => t.slice(0, 24));
+    }
+
+    if (typeof avatar_url === 'string') {
+      const url = avatar_url.trim();
+      if (url && !/^https?:\/\//i.test(url) && !url.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'Avatar must be a valid URL' });
+      }
+      patch.avatar_url = url || null;
+    }
+
+    if (typeof latitude === 'number' && latitude >= -90 && latitude <= 90) patch.latitude = latitude;
+    if (typeof longitude === 'number' && longitude >= -180 && longitude <= 180) patch.longitude = longitude;
+
+    if (!Object.keys(patch).length) {
+      return res.status(400).json({ error: 'No editable fields provided' });
+    }
+
+    const { data: updated, error } = await supabaseAdmin
+      .from('profiles')
+      .update(patch)
+      .eq('id', me.id)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+
+    console.log(`[PUT /api/profiles/me] Updated ${me.id}: ${Object.keys(patch).join(', ')}`);
+    res.json({ profile: updated });
+  } catch (err) {
+    console.error('[PUT /api/profiles/me]', err);
+    res.status(500).json({ error: 'Failed to update profile', detail: err.message });
+  }
+});
+
+/* -------------------- DISCOVER -------------------- */
 app.get('/api/discover', requireAuth, async (req, res) => {
   try {
     const me = await refreshDailyLikes(await ensureProfile(req));
@@ -215,12 +253,8 @@ app.get('/api/discover', requireAuth, async (req, res) => {
 
     const userClient = supabaseAsUser(req.token);
     const { data, error } = await userClient.rpc('get_nearby_profiles', {
-      p_lat: lat,
-      p_lng: lng,
-      p_limit: limit,
-      p_max_km: maxKm,
+      p_lat: lat, p_lng: lng, p_limit: limit, p_max_km: maxKm,
     });
-
     if (error) throw error;
 
     const profiles = (data || []).map((p) => ({
@@ -244,9 +278,7 @@ app.get('/api/discover', requireAuth, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------
- * POST /api/likes
- * ---------------------------------------------------------- */
+/* -------------------- LIKES -------------------- */
 app.post('/api/likes', requireAuth, async (req, res) => {
   try {
     const me = await refreshDailyLikes(await ensureProfile(req));
@@ -266,8 +298,7 @@ app.post('/api/likes', requireAuth, async (req, res) => {
     const { data: likeRow, error: likeErr } = await supabaseAdmin
       .from('likes')
       .upsert({ liker_id: me.id, likee_id, is_like }, { onConflict: 'liker_id,likee_id' })
-      .select('*')
-      .single();
+      .select('*').single();
     if (likeErr) throw likeErr;
 
     let updatedProfile = me;
@@ -275,9 +306,7 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       const { data } = await supabaseAdmin
         .from('profiles')
         .update({ daily_likes_used: me.daily_likes_used + 1 })
-        .eq('id', me.id)
-        .select('*')
-        .single();
+        .eq('id', me.id).select('*').single();
       if (data) updatedProfile = data;
     }
 
@@ -291,39 +320,26 @@ app.post('/api/likes', requireAuth, async (req, res) => {
     if (is_like !== true) return res.json({ matched: false, like: likeRow, likes: likesMeta });
 
     const { data: reciprocal } = await supabaseAdmin
-      .from('likes')
-      .select('id')
-      .eq('liker_id', likee_id)
-      .eq('likee_id', me.id)
-      .eq('is_like', true)
-      .maybeSingle();
+      .from('likes').select('id')
+      .eq('liker_id', likee_id).eq('likee_id', me.id).eq('is_like', true).maybeSingle();
 
     if (!reciprocal) return res.json({ matched: false, like: likeRow, likes: likesMeta });
 
     const [u1, u2] = sortPair(me.id, likee_id);
     const { data: existing } = await supabaseAdmin
-      .from('matches')
-      .select('*')
-      .eq('user1_id', u1)
-      .eq('user2_id', u2)
-      .maybeSingle();
+      .from('matches').select('*').eq('user1_id', u1).eq('user2_id', u2).maybeSingle();
 
     let match = existing;
     if (!match) {
       const { data: created, error: mErr } = await supabaseAdmin
-        .from('matches')
-        .insert({ user1_id: u1, user2_id: u2 })
-        .select('*')
-        .single();
+        .from('matches').insert({ user1_id: u1, user2_id: u2 }).select('*').single();
       if (mErr) throw mErr;
       match = created;
     }
 
     const { data: other } = await supabaseAdmin
-      .from('profiles')
-      .select('id, name, age, city, avatar_url, tags, bio')
-      .eq('id', likee_id)
-      .single();
+      .from('profiles').select('id, name, age, city, avatar_url, tags, bio')
+      .eq('id', likee_id).single();
 
     res.status(201).json({ matched: true, match, partner: other, like: likeRow, likes: likesMeta });
   } catch (err) {
@@ -332,15 +348,12 @@ app.post('/api/likes', requireAuth, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------
- * GET /api/matches
- * ---------------------------------------------------------- */
+/* -------------------- MATCHES -------------------- */
 app.get('/api/matches', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
     const { data: rows, error } = await supabaseAdmin
-      .from('matches')
-      .select('*')
+      .from('matches').select('*')
       .or(`user1_id.eq.${me.id},user2_id.eq.${me.id}`)
       .order('created_at', { ascending: false });
 
@@ -348,23 +361,18 @@ app.get('/api/matches', requireAuth, async (req, res) => {
     if (!rows?.length) return res.json({ matches: [] });
 
     const partnerIds = rows.map((m) => (m.user1_id === me.id ? m.user2_id : m.user1_id));
-
     const { data: partners } = await supabaseAdmin
-      .from('profiles')
-      .select('id, name, age, city, avatar_url, bio, tags, is_premium')
+      .from('profiles').select('id, name, age, city, avatar_url, bio, tags, is_premium')
       .in('id', partnerIds);
-
     const partnerMap = Object.fromEntries((partners || []).map((p) => [p.id, p]));
 
     const matchIds = rows.map((m) => m.id);
     const { data: msgs } = await supabaseAdmin
       .from('messages')
       .select('id, match_id, sender_id, content, media_url, is_read, created_at')
-      .in('match_id', matchIds)
-      .order('created_at', { ascending: false });
+      .in('match_id', matchIds).order('created_at', { ascending: false });
 
-    const lastByMatch = {};
-    const unreadByMatch = {};
+    const lastByMatch = {}, unreadByMatch = {};
     for (const m of msgs || []) {
       if (!lastByMatch[m.match_id]) lastByMatch[m.match_id] = m;
       if (m.sender_id !== me.id && !m.is_read) {
@@ -372,20 +380,16 @@ app.get('/api/matches', requireAuth, async (req, res) => {
       }
     }
 
-    const matches = rows
-      .map((m) => {
-        const partnerId = m.user1_id === me.id ? m.user2_id : m.user1_id;
-        const partner = partnerMap[partnerId];
-        if (!partner) return null;
-        return {
-          id: m.id,
-          created_at: m.created_at,
-          partner,
-          last_message: lastByMatch[m.id] || null,
-          unread_count: unreadByMatch[m.id] || 0,
-        };
-      })
-      .filter(Boolean);
+    const matches = rows.map((m) => {
+      const partnerId = m.user1_id === me.id ? m.user2_id : m.user1_id;
+      const partner = partnerMap[partnerId];
+      if (!partner) return null;
+      return {
+        id: m.id, created_at: m.created_at, partner,
+        last_message: lastByMatch[m.id] || null,
+        unread_count: unreadByMatch[m.id] || 0,
+      };
+    }).filter(Boolean);
 
     res.json({ matches });
   } catch (err) {
@@ -394,25 +398,16 @@ app.get('/api/matches', requireAuth, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------
- * DELETE /api/matches/:matchId
- * ---------------------------------------------------------- */
 app.delete('/api/matches/:matchId', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
     const { matchId } = req.params;
-
     const { data: match } = await supabaseAdmin
-      .from('matches')
-      .select('*')
-      .eq('id', matchId)
-      .maybeSingle();
-
+      .from('matches').select('*').eq('id', matchId).maybeSingle();
     if (!match) return res.status(404).json({ error: 'Match not found' });
     if (match.user1_id !== me.id && match.user2_id !== me.id) {
       return res.status(403).json({ error: 'Not a participant of this match' });
     }
-
     await supabaseAdmin.from('matches').delete().eq('id', matchId);
     res.json({ ok: true });
   } catch (err) {
@@ -421,9 +416,7 @@ app.delete('/api/matches/:matchId', requireAuth, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------
- * GET /api/messages/:matchId
- * ---------------------------------------------------------- */
+/* -------------------- MESSAGES -------------------- */
 app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
@@ -431,36 +424,24 @@ app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
 
     const { data: match } = await supabaseAdmin
-      .from('matches')
-      .select('*')
-      .eq('id', matchId)
-      .maybeSingle();
-
+      .from('matches').select('*').eq('id', matchId).maybeSingle();
     if (!match) return res.status(404).json({ error: 'Match not found' });
     if (match.user1_id !== me.id && match.user2_id !== me.id) {
       return res.status(403).json({ error: 'Not a participant of this match' });
     }
 
     const { data: messages } = await supabaseAdmin
-      .from('messages')
-      .select('*')
-      .eq('match_id', matchId)
-      .order('created_at', { ascending: true })
-      .limit(limit);
+      .from('messages').select('*').eq('match_id', matchId)
+      .order('created_at', { ascending: true }).limit(limit);
 
-    await supabaseAdmin
-      .from('messages')
+    await supabaseAdmin.from('messages')
       .update({ is_read: true })
-      .eq('match_id', matchId)
-      .neq('sender_id', me.id)
-      .eq('is_read', false);
+      .eq('match_id', matchId).neq('sender_id', me.id).eq('is_read', false);
 
     const partnerId = match.user1_id === me.id ? match.user2_id : match.user1_id;
     const { data: partner } = await supabaseAdmin
-      .from('profiles')
-      .select('id, name, age, city, avatar_url, bio, tags')
-      .eq('id', partnerId)
-      .single();
+      .from('profiles').select('id, name, age, city, avatar_url, bio, tags')
+      .eq('id', partnerId).single();
 
     res.json({ match, partner, messages: messages || [] });
   } catch (err) {
@@ -469,23 +450,15 @@ app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------
- * POST /api/messages
- * ---------------------------------------------------------- */
 app.post('/api/messages', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
     const { match_id, content = null, media_url = null } = req.body || {};
-
     if (!match_id) return res.status(400).json({ error: 'match_id is required' });
     if (!content && !media_url) return res.status(400).json({ error: 'Provide content or media_url' });
 
     const { data: match } = await supabaseAdmin
-      .from('matches')
-      .select('id, user1_id, user2_id')
-      .eq('id', match_id)
-      .maybeSingle();
-
+      .from('matches').select('id, user1_id, user2_id').eq('id', match_id).maybeSingle();
     if (!match) return res.status(404).json({ error: 'Match not found' });
     if (match.user1_id !== me.id && match.user2_id !== me.id) {
       return res.status(403).json({ error: 'Not a participant of this match' });
@@ -494,13 +467,11 @@ app.post('/api/messages', requireAuth, async (req, res) => {
     const { data: message, error } = await supabaseAdmin
       .from('messages')
       .insert({
-        match_id,
-        sender_id: me.id,
+        match_id, sender_id: me.id,
         content: content ? String(content).slice(0, 4000) : null,
         media_url,
       })
-      .select('*')
-      .single();
+      .select('*').single();
 
     if (error) throw error;
     res.status(201).json({ message });
@@ -510,29 +481,21 @@ app.post('/api/messages', requireAuth, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------
- * GET /api/premium/likes
- * ---------------------------------------------------------- */
+/* -------------------- PREMIUM LIKES -------------------- */
 app.get('/api/premium/likes', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
     const { data: rows } = await supabaseAdmin
-      .from('likes')
-      .select('id, liker_id, created_at')
-      .eq('likee_id', me.id)
-      .eq('is_like', true)
+      .from('likes').select('id, liker_id, created_at')
+      .eq('likee_id', me.id).eq('is_like', true)
       .order('created_at', { ascending: false });
 
     const likerIds = (rows || []).map((r) => r.liker_id);
     const total = likerIds.length;
-
-    if (!likerIds.length) {
-      return res.json({ is_premium: me.is_premium, total: 0, likes: [] });
-    }
+    if (!likerIds.length) return res.json({ is_premium: me.is_premium, total: 0, likes: [] });
 
     const { data: myMatches } = await supabaseAdmin
-      .from('matches')
-      .select('user1_id, user2_id')
+      .from('matches').select('user1_id, user2_id')
       .or(`user1_id.eq.${me.id},user2_id.eq.${me.id}`);
 
     const matchedIds = new Set(
@@ -540,47 +503,36 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
     );
 
     const { data: profiles } = await supabaseAdmin
-      .from('profiles')
-      .select('id, name, age, city, avatar_url, bio, tags')
+      .from('profiles').select('id, name, age, city, avatar_url, bio, tags')
       .in('id', likerIds);
 
     const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
 
     if (me.is_premium) {
-      const likes = rows
-        .map((r) => {
-          const p = profileMap[r.liker_id];
-          if (!p) return null;
-          return {
-            like_id: r.id,
-            liked_at: r.created_at,
-            already_matched: matchedIds.has(r.liker_id),
-            profile: p,
-          };
-        })
-        .filter(Boolean);
+      const likes = rows.map((r) => {
+        const p = profileMap[r.liker_id];
+        if (!p) return null;
+        return {
+          like_id: r.id, liked_at: r.created_at,
+          already_matched: matchedIds.has(r.liker_id), profile: p,
+        };
+      }).filter(Boolean);
       return res.json({ is_premium: true, total, likes });
     }
 
     const preview = rows.slice(0, 12).map((r) => {
       const p = profileMap[r.liker_id] || {};
       return {
-        like_id: r.id,
-        liked_at: r.created_at,
-        locked: true,
+        like_id: r.id, liked_at: r.created_at, locked: true,
         teaser: {
           first_name_initial: (p.name || '?').trim().charAt(0).toUpperCase(),
-          age: p.age ?? null,
-          city: p.city || null,
-          avatar_url: p.avatar_url || null,
+          age: p.age ?? null, city: p.city || null, avatar_url: p.avatar_url || null,
         },
       };
     });
 
     res.json({
-      is_premium: false,
-      total,
-      likes: preview,
+      is_premium: false, total, likes: preview,
       upgrade: { code: 'PREMIUM_REQUIRED', message: 'Upgrade to Member+.', plans: PLANS },
     });
   } catch (err) {
@@ -589,25 +541,13 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
   }
 });
 
-/* ============================================================
- * 6. PAYMENTS
- * ============================================================ */
-
-/* ------------------------------------------------------------
- * POST /api/payments/telebirr/initiate
- * Creates a pending subscription record. Never blocks the
- * USSD flow even if the subscriptions table is missing.
- * ---------------------------------------------------------- */
+/* -------------------- PAYMENTS -------------------- */
 app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
     const { plan_type } = req.body || {};
-
     if (!PLANS[plan_type]) {
-      return res.status(400).json({
-        error: "plan_type must be 'monthly' or 'yearly'",
-        plans: PLANS,
-      });
+      return res.status(400).json({ error: "plan_type must be 'monthly' or 'yearly'", plans: PLANS });
     }
 
     const plan = PLANS[plan_type];
@@ -618,90 +558,58 @@ app.post('/api/payments/telebirr/initiate', requireAuth, async (req, res) => {
       const { data, error } = await supabaseAdmin
         .from('subscriptions')
         .insert({
-          user_id: me.id,
-          plan_type,
+          user_id: me.id, plan_type,
           amount_etb: plan.amount_etb,
-          status: 'pending',
-          telebirr_txn_id: txnId,
-        })
-        .select('*')
-        .single();
-
-      if (error) {
-        console.warn('[initiate] subscriptions insert failed:', error.message);
-      } else {
-        subscription = data;
-      }
+          status: 'pending', telebirr_txn_id: txnId,
+        }).select('*').single();
+      if (error) console.warn('[initiate] subscriptions insert failed:', error.message);
+      else subscription = data;
     } catch (subErr) {
       console.warn('[initiate] subscriptions insert threw:', subErr.message);
     }
 
     console.log(`[initiate] Pending USSD payment ${txnId} for ${me.id} (${plan_type})`);
-
     res.status(201).json({
-      mode: 'ussd',
-      txn_id: txnId,
-      subscription,
-      plan: { plan_type, ...plan },
-      message: 'Pending USSD payment.',
+      mode: 'ussd', txn_id: txnId, subscription,
+      plan: { plan_type, ...plan }, message: 'Pending USSD payment.',
     });
   } catch (err) {
     console.error('[POST /api/payments/telebirr/initiate]', err);
-    res.status(500).json({
-      error: 'Failed to initiate payment',
-      detail: err.message,
-    });
+    res.status(500).json({ error: 'Failed to initiate payment', detail: err.message });
   }
 });
 
-/* ------------------------------------------------------------
- * POST /api/payments/mock-confirm
- * Marks the user as premium. Used by the USSD "I've paid" flow.
- * Only active when real Tele Birr credentials are NOT configured.
- * ---------------------------------------------------------- */
 app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
   if (TELEBIRR_API_KEY) {
-    return res.status(403).json({
-      error: 'Manual confirmation is disabled because Tele Birr is configured.',
-    });
+    return res.status(403).json({ error: 'Manual confirmation is disabled because Tele Birr is configured.' });
   }
-
   try {
     const me = await ensureProfile(req);
     const { txn_id } = req.body || {};
-
     const startedAt = new Date();
     const expiresAt = new Date(startedAt.getTime() + 30 * 86400 * 1000);
 
-    // Best-effort subscription update
     if (txn_id) {
       try {
-        await supabaseAdmin
-          .from('subscriptions')
+        await supabaseAdmin.from('subscriptions')
           .update({
             status: 'active',
             started_at: startedAt.toISOString(),
             expires_at: expiresAt.toISOString(),
           })
-          .eq('telebirr_txn_id', txn_id)
-          .eq('user_id', me.id);
+          .eq('telebirr_txn_id', txn_id).eq('user_id', me.id);
       } catch (subErr) {
         console.warn('[mock-confirm] subscriptions update failed (non-fatal):', subErr.message);
       }
     }
 
-    // Unlock premium
     const { data: profile, error: pErr } = await supabaseAdmin
       .from('profiles')
       .update({
-        is_premium: true,
-        daily_likes_used: 0,
+        is_premium: true, daily_likes_used: 0,
         last_like_reset: startedAt.toISOString(),
       })
-      .eq('id', me.id)
-      .select('*')
-      .single();
-
+      .eq('id', me.id).select('*').single();
     if (pErr) throw pErr;
 
     console.log(`[mock-confirm] Member+ activated for ${me.id} (via USSD)`);
@@ -712,17 +620,11 @@ app.post('/api/payments/mock-confirm', requireAuth, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------
- * POST /api/payments/telebirr/webhook
- * Placeholder — used by real H5 gateway if you migrate later.
- * ---------------------------------------------------------- */
-app.post('/api/payments/telebirr/webhook', (req, res) => {
+app.post('/api/payments/telebirr/webhook', (_req, res) => {
   res.json({ received: true });
 });
 
-/* ------------------------------------------------------------
- * 404 + ERROR HANDLERS
- * ---------------------------------------------------------- */
+/* -------------------- 404 + ERROR -------------------- */
 app.use((req, res) => {
   res.status(404).json({ error: `No route for ${req.method} ${req.path}` });
 });
@@ -732,17 +634,12 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error', detail: err.message });
 });
 
-/* ------------------------------------------------------------
- * START
- * ---------------------------------------------------------- */
+/* -------------------- START -------------------- */
 app.listen(PORT, () => {
   console.log(`\n  Hearthside API running on http://localhost:${PORT}`);
   console.log(`  Health check:  http://localhost:${PORT}/api/health`);
-  console.log(`  Config:        http://localhost:${PORT}/config.js`);
   console.log(`  Free like cap: ${FREE_LIKE_LIMIT}/day`);
-  console.log(
-    `  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'USSD (manual confirmation)'}\n`
-  );
+  console.log(`  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'USSD (manual confirmation)'}\n`);
 });
 
 module.exports = app;
