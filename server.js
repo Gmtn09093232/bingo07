@@ -53,7 +53,7 @@ app.get('/config.js', (_req, res) => {
   );
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '')));
 
 /* -------------------- SUPABASE -------------------- */
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
