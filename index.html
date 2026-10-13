@@ -103,6 +103,33 @@
   .filter-range::-moz-range-track { height: 6px; border-radius: 999px; background: #ECECEC; }
 
   .filter-gender-chip.selected { background:#F5B041; border-color:#F5B041; color:#1A1A1A; font-weight:700; }
+
+  /* Interest chip */
+  .interest-chip {
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 9px 13px; border-radius: 999px;
+    background:#FFFFFF; border:1.5px solid #ECECEC;
+    font-size: 12.5px; font-weight: 600; color:#1A1A1A;
+    transition: transform .12s ease, background .15s ease, border-color .15s ease;
+    user-select:none; cursor:pointer;
+  }
+  .interest-chip:active { transform: scale(0.96); }
+  .interest-chip.selected { background:#F5B041; border-color:#F5B041; color:#1A1A1A; font-weight:700; }
+  .interest-chip.selected .interest-check { display:inline-flex; }
+  .interest-chip .interest-check { display:none; }
+
+  /* Locked placeholder text in profile cards */
+  .locked-dots {
+    display:inline-block;
+    letter-spacing: 0.35em;
+    color:#ffffff;
+  }
+  .locked-line {
+    background: rgba(255,255,255,0.25);
+    border-radius: 999px;
+    height: 8px;
+    display:block;
+  }
 </style>
 </head>
 
@@ -587,7 +614,7 @@
 
 
   <!-- ============================================================
-       BOTTOM NAV (5 tabs)
+       BOTTOM NAV
        ============================================================ -->
   <nav id="bottomNav"
     class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 w-full max-w-app bg-white/95 backdrop-blur border-t border-line/80 shadow-nav hidden"
@@ -602,7 +629,7 @@
      FILTER MODAL
      ============================================================ -->
 <div id="filterModal" class="hidden fixed inset-0 z-[75] items-end justify-center bg-charcoal/60 backdrop-blur-sm overlay">
-  <div id="filterPanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden flex flex-col" style="max-height: 90vh;">
+  <div id="filterPanel" class="w-full max-w-app bg-cream rounded-t-[24px] shadow-card overflow-hidden flex flex-col" style="max-height: 92vh;">
     <div class="shrink-0 px-5 pt-4 pb-3 border-b border-line/70">
       <div class="w-10 h-1 rounded-full bg-line mx-auto mb-3"></div>
       <div class="flex items-center justify-between">
@@ -613,6 +640,8 @@
     </div>
 
     <div class="flex-1 overflow-y-auto no-scrollbar px-5 py-5 space-y-6" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+
+      <!-- DISTANCE -->
       <section>
         <div class="flex items-baseline justify-between mb-2">
           <label class="text-[13px] font-bold text-charcoal">Maximum distance</label>
@@ -626,6 +655,7 @@
         <p id="filterDistanceHint" class="hidden text-[11.5px] text-amber-600 mt-2 bg-amber-50 border border-amber-100 rounded-[10px] px-2.5 py-2"></p>
       </section>
 
+      <!-- AGE (premium) -->
       <section class="relative" id="filterAgeSection">
         <div class="flex items-baseline justify-between mb-2">
           <label class="text-[13px] font-bold text-charcoal">Age range</label>
@@ -652,6 +682,7 @@
         </div>
       </section>
 
+      <!-- GENDER (premium) -->
       <section class="relative" id="filterGenderSection">
         <label class="block text-[13px] font-bold text-charcoal mb-2">Show me</label>
         <div class="grid grid-cols-2 gap-2">
@@ -669,13 +700,19 @@
         </div>
       </section>
 
-      <section class="relative" id="filterTagsSection">
-        <label class="block text-[13px] font-bold text-charcoal mb-1">Interests</label>
-        <p class="text-[11.5px] text-muted mb-2">Match people with at least one of these interests.</p>
-        <input id="filterTags" type="text" placeholder="Music, Baking, Cycling"
-          class="w-full h-12 rounded-[12px] bg-white border border-line px-4 text-[14px] outline-none focus:border-hearth-300 transition" />
-        <div id="filterTagChips" class="flex flex-wrap gap-1.5 mt-2.5"></div>
-        <div id="filterTagsLock" class="hidden absolute inset-0 rounded-[14px] bg-white/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-center">
+      <!-- INTERESTS (premium) -->
+      <section class="relative" id="filterInterestsSection">
+        <div class="flex items-baseline justify-between mb-1">
+          <label class="text-[13px] font-bold text-charcoal">Interests</label>
+          <span id="filterInterestsCount" class="text-[11.5px] font-bold text-hearth-600">0 selected</span>
+        </div>
+        <p class="text-[11.5px] text-muted mb-3">Pick up to 8. You'll see people who share at least one.</p>
+
+        <div id="interestChips" class="flex flex-wrap gap-2">
+          <!-- Injected by JS -->
+        </div>
+
+        <div id="filterInterestsLock" class="hidden absolute inset-0 rounded-[14px] bg-white/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-center">
           <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide mb-2">
             <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
             Member+
@@ -684,6 +721,7 @@
         </div>
       </section>
 
+      <!-- PREMIUM UPSELL -->
       <div id="filterPremiumUpsell" class="hidden bg-hearth-50 border border-hearth-200/70 rounded-card p-4">
         <p class="text-[13px] font-bold text-charcoal">Want more control?</p>
         <p class="text-[12px] text-muted mt-1 leading-relaxed">
@@ -694,6 +732,7 @@
           Unlock with Member+
         </button>
       </div>
+
     </div>
 
     <div class="shrink-0 px-5 py-4 border-t border-line/70" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
@@ -764,12 +803,11 @@
         <span id="editBioCount" class="block text-[11px] text-muted text-right mt-1">0 / 500</span>
       </label>
 
-      <label class="block mb-4">
-        <span class="text-[12px] font-semibold text-muted">Interests / tags</span>
-        <span class="block text-[11px] text-muted mt-0.5">Up to 8, comma-separated. E.g. Music, Baking, Cycling</span>
-        <input id="editTags" type="text" placeholder="Music, Baking, Cycling"
-          class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
-      </label>
+      <div class="mb-4">
+        <span class="text-[12px] font-semibold text-muted">Interests</span>
+        <span class="block text-[11px] text-muted mt-0.5 mb-3">Pick up to 8 that describe you.</span>
+        <div id="editInterestChips" class="flex flex-wrap gap-2"></div>
+      </div>
 
       <label class="block mb-3">
         <span class="text-[12px] font-semibold text-muted">Avatar image URL</span>
@@ -841,7 +879,7 @@
     </div>
     <h3 class="text-[21px] font-extrabold tracking-tight">Premium unlocked</h3>
     <p class="text-[13px] text-muted mt-2.5 leading-relaxed">
-      Welcome to Member+. Unlimited likes, advanced filters, and you can finally see everyone who liked you.
+      Welcome to Member+. Unlimited likes, advanced filters, and full profile details on every card.
     </p>
     <button id="premiumDone" class="mt-6 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[15px] active:scale-[.98] transition">
       Start exploring
@@ -1086,10 +1124,23 @@ const USSD_CODES = {
   yearly:  `*127*2*${TELEBIRR_RECEIVING_PHONE}*4500#`,
 };
 
+/* ============================================================
+ * Predefined interest list — shown as chips
+ * ========================================================== */
+const INTEREST_OPTIONS = [
+  'Music',      'Baking',     'Cycling',     'Coffee',
+  'Running',    'Cooking',    'Travel',      'Books',
+  'Film',       'Hiking',     'Dogs',        'Cats',
+  'Reading',    'Swimming',   'Yoga',        'Art',
+  'Photography','Dancing',    'Football',    'Gym',
+  'Meditation', 'Painting',   'Writing',     'Chess',
+];
+
 const FEATURES = [
   'See everyone who liked you',
   'Unlimited likes, every day',
-  'Advanced filters (distance, age, tags)',
+  'Advanced filters (distance, age, interests)',
+  'See full profiles — names, ages, bios',
   'Undo your last pass',
   'Priority placement in discovery',
 ];
@@ -1120,6 +1171,7 @@ const state = {
   mutedMatches: new Set(),
   pendingUssd: null,
   filters: { ...FILTER_DEFAULTS },
+  editingTags: new Set(),   // for edit profile sheet
 };
 
 /* ============================================================
@@ -1182,7 +1234,7 @@ function toast(message, ms = 2400) {
 }
 
 /* ============================================================
- * 3. API LAYER
+ * 3. API
  * ========================================================== */
 async function getToken() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -1278,9 +1330,9 @@ async function handleSignOut() {
   state.matchedProfileIds.clear();
   state.pendingUssd = null;
   state.mutedMatches.clear();
+  state.editingTags.clear();
   if (state.realtimeChannel) { supabase.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
 
-  // Close every overlay so nothing leaks onto the auth screen
   endCall(true);
   closeChatOptions();
   closePartnerProfile();
@@ -1380,263 +1432,43 @@ function renderLikesMeter() {
 }
 
 /* ============================================================
- * 7. PROFILE
+ * 7. INTEREST CHIPS (shared renderer)
  * ========================================================== */
-async function renderProfile() {
-  const p = state.myProfile || {};
+function renderInterestChips(containerId, selectedSet, maxSelect, onChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
 
-  $('#profileName').textContent = `${p.name || 'You'}${p.age ? `, ${p.age}` : ''}`;
+  container.innerHTML = INTEREST_OPTIONS.map((tag) => {
+    const selected = selectedSet.has(tag);
+    return `
+      <button type="button"
+        class="interest-chip ${selected ? 'selected' : ''}"
+        data-interest="${esc(tag)}">
+        <span class="interest-check">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+        </span>
+        ${esc(tag)}
+      </button>
+    `;
+  }).join('');
 
-  const metaParts = [];
-  if (p.city) metaParts.push(p.city);
-  if (p.gender) metaParts.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
-  $('#profileMetaLine').textContent = metaParts.join(' · ') || 'Add your city and details';
-
-  $('#profileBio').textContent = p.bio || 'No bio yet. Tap Edit profile to add one.';
-
-  $('#profileTags').innerHTML = (p.tags || []).length
-    ? (p.tags || []).map((t) =>
-        `<span class="px-2.5 py-1 rounded-full bg-hearth-50 text-hearth-600 text-[11px] font-semibold">${esc(t)}</span>`
-      ).join('')
-    : '<span class="text-[11.5px] text-muted">No interests yet</span>';
-
-  const avatarUrl = p.avatar_url || '';
-  $('#profileAvatar').src = avatarUrl;
-  $('#profileAvatar').dataset.fallback = p.name || 'You';
-  $('#profileCoverImg').src = avatarUrl;
-  $('#profileCoverImg').dataset.fallback = p.name || 'You';
-  wireFallbacks($('#screen-profile'));
-
-  $('#profilePremiumBadge').classList.toggle('hidden', !state.isPremium);
-  $('#profileMembershipSub').textContent = state.isPremium ? 'Member+ active' : 'Free plan';
-
-  if (!state.myProfile) {
-    try {
-      const { profile } = await api('/api/profiles/me');
-      state.myProfile = profile;
-      renderProfile();
-    } catch (err) {
-      console.warn('[profile] Could not fetch:', err.message);
-    }
-  }
-}
-
-function openEditProfile() {
-  const p = state.myProfile || {};
-  $('#editName').value = p.name || '';
-  $('#editAge').value = p.age ?? '';
-  $('#editGender').value = p.gender || '';
-  $('#editCity').value = p.city || '';
-  $('#editBio').value = p.bio || '';
-  $('#editTags').value = (p.tags || []).join(', ');
-  $('#editAvatarUrl').value = p.avatar_url || '';
-
-  updateEditAvatarPreview();
-  updateBioCount();
-  hideEditError();
-
-  const sheet = $('#editProfileSheet');
-  const panel = $('#editProfilePanel');
-  panel.classList.remove('sheet-out');
-  panel.classList.add('sheet-in');
-  sheet.classList.remove('hidden');
-  sheet.classList.add('flex');
-}
-
-function closeEditProfile() {
-  const sheet = $('#editProfileSheet');
-  const panel = $('#editProfilePanel');
-  if (!sheet || sheet.classList.contains('hidden')) return;
-  panel.classList.remove('sheet-in');
-  panel.classList.add('sheet-out');
-  setTimeout(() => {
-    sheet.classList.add('hidden');
-    sheet.classList.remove('flex');
-    panel.classList.remove('sheet-out');
-  }, 200);
-}
-
-function updateEditAvatarPreview() {
-  const url = $('#editAvatarUrl').value.trim();
-  const img = $('#editAvatarPreview');
-  img.dataset.fallback = $('#editName').value.trim() || 'You';
-  if (url) {
-    img.src = url;
-  } else {
-    const initial = ($('#editName').value.trim() || 'You').charAt(0).toUpperCase();
-    const svg =
-      `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">` +
-      `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
-      `<stop offset="0" stop-color="#F5B041"/><stop offset="1" stop-color="#E89B2A"/>` +
-      `</linearGradient></defs><rect width="200" height="200" fill="url(#g)"/>` +
-      `<text x="50%" y="55%" font-family="Inter,sans-serif" font-size="80" font-weight="700" ` +
-      `fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initial}</text></svg>`;
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  }
-}
-
-function updateBioCount() {
-  const len = ($('#editBio').value || '').length;
-  $('#editBioCount').textContent = `${len} / 500`;
-}
-
-function showEditError(msg) { const el = $('#editProfileError'); el.textContent = msg; el.classList.remove('hidden'); }
-function hideEditError() { $('#editProfileError').classList.add('hidden'); }
-
-async function saveEditProfile() {
-  hideEditError();
-
-  const name = $('#editName').value.trim();
-  const age = $('#editAge').value;
-  const gender = $('#editGender').value;
-  const city = $('#editCity').value.trim();
-  const bio = $('#editBio').value.trim();
-  const tagsRaw = $('#editTags').value.trim();
-  const avatar_url = $('#editAvatarUrl').value.trim();
-
-  if (!name) return showEditError('Please enter your name.');
-  if (age && (parseInt(age, 10) < 18)) return showEditError('You must be 18 or older.');
-
-  const tags = tagsRaw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8);
-
-  const saveBtn = $('#editProfileSave');
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Saving…';
-
-  try {
-    const payload = {
-      name,
-      age: age ? parseInt(age, 10) : undefined,
-      gender: gender || undefined,
-      city,
-      bio,
-      tags,
-      avatar_url,
-    };
-
-    const { profile } = await api('/api/profiles/me', { method: 'PUT', body: payload });
-
-    state.myProfile = profile;
-    renderProfile();
-
-    closeEditProfile();
-    toast('Profile updated');
-  } catch (err) {
-    console.error('[edit profile]', err);
-    showEditError(err.data?.detail || err.data?.error || err.message || 'Could not save.');
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Save';
-  }
-}
-
-const INFO_CONTENT = {
-  about: {
-    title: 'About Hearthside',
-    html: `
-      <div class="text-center mb-6">
-        <div class="w-16 h-16 mx-auto rounded-2xl bg-hearth shadow-amber flex items-center justify-center mb-3">
-          <svg class="w-8 h-8 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 21s-7.5-4.7-9.4-9.2C1.1 8.2 3 5 6.3 5c2 0 3.4 1.1 4.2 2.3l1.5 2 1.5-2C14.3 6.1 15.7 5 17.7 5 21 5 22.9 8.2 21.4 11.8 19.5 16.3 12 21 12 21z"/>
-          </svg>
-        </div>
-        <h2 class="text-[20px] font-extrabold tracking-tight">Hearthside</h2>
-        <p class="text-[13px] text-muted mt-1">Version 1.0.0</p>
-      </div>
-      <div class="space-y-4 text-[14px] leading-relaxed text-charcoal">
-        <p>Hearthside is a warm, mobile-first dating app for meaningful connection — not endless swiping.</p>
-        <p>Our mission: help people find <b>real relationships</b> rooted in kindness, curiosity, and shared values.</p>
-        <p class="text-muted text-[13px]">Built with care in Addis Ababa. We'd love your feedback.</p>
-      </div>
-      <div class="mt-6 bg-hearth-50 rounded-card p-4 border border-hearth-200/70">
-        <p class="text-[12.5px] text-hearth-600 font-semibold text-center">Made for you, with love.</p>
-      </div>
-    `,
-  },
-  privacy: {
-    title: 'Privacy & safety',
-    html: `
-      <div class="space-y-5 text-[14px] leading-relaxed text-charcoal">
-        <div><h3 class="text-[15px] font-bold mb-1.5">Your data</h3>
-          <p class="text-muted text-[13.5px]">We store only what's needed to run Hearthside: your profile details, likes, matches, and messages. We never sell your data.</p></div>
-        <div><h3 class="text-[15px] font-bold mb-1.5">Location</h3>
-          <p class="text-muted text-[13.5px]">Your approximate distance is shown to other users, but your exact coordinates are never revealed.</p></div>
-        <div><h3 class="text-[15px] font-bold mb-1.5">Blocking & reporting</h3>
-          <p class="text-muted text-[13.5px]">You can unmatch or report anyone from the chat options menu. Reports are reviewed by our team.</p></div>
-        <div><h3 class="text-[15px] font-bold mb-1.5">Delete your account</h3>
-          <p class="text-muted text-[13.5px]">Sign out and contact us at support@hearthside.app to permanently delete your account.</p></div>
-      </div>
-    `,
-  },
-  help: {
-    title: 'Help centre',
-    html: `
-      <div class="space-y-4 text-[14px] leading-relaxed text-charcoal">
-        <div class="bg-white rounded-card border border-line p-4">
-          <h3 class="text-[14.5px] font-bold mb-1">How do I get more matches?</h3>
-          <p class="text-muted text-[13.5px] mt-1">Complete your profile, add a clear photo, and include interests. Member+ users appear higher in discovery.</p>
-        </div>
-        <div class="bg-white rounded-card border border-line p-4">
-          <h3 class="text-[14.5px] font-bold mb-1">How do I pay for Member+?</h3>
-          <p class="text-muted text-[13.5px] mt-1">Tap "Unlock with Member+" on the Likes screen or paywall. Choose your plan, then complete the Tele Birr USSD payment.</p>
-        </div>
-        <div class="bg-white rounded-card border border-line p-4">
-          <h3 class="text-[14.5px] font-bold mb-1">Is messaging really free?</h3>
-          <p class="text-muted text-[13.5px] mt-1">Yes. Messaging with your matches is always free — forever. Member+ only adds discovery features.</p>
-        </div>
-        <div class="bg-white rounded-card border border-line p-4">
-          <h3 class="text-[14.5px] font-bold mb-1">Still stuck?</h3>
-          <p class="text-muted text-[13.5px] mt-1">Email us at support@hearthside.app and we'll help within 24 hours.</p>
-        </div>
-      </div>
-    `,
-  },
-  terms: {
-    title: 'Terms & privacy',
-    html: `
-      <div class="space-y-4 text-[13.5px] leading-relaxed text-charcoal">
-        <h3 class="text-[15px] font-bold">1. Eligibility</h3>
-        <p class="text-muted">You must be at least 18 years old to use Hearthside.</p>
-        <h3 class="text-[15px] font-bold">2. Your account</h3>
-        <p class="text-muted">You're responsible for keeping your password secure and for all activity on your account.</p>
-        <h3 class="text-[15px] font-bold">3. Community</h3>
-        <p class="text-muted">Be kind. No harassment, hate speech, impersonation, or illegal activity. We may remove accounts that break these rules.</p>
-        <h3 class="text-[15px] font-bold">4. Payments</h3>
-        <p class="text-muted">Member+ subscriptions are non-refundable once activated. Cancel anytime from the app.</p>
-        <h3 class="text-[15px] font-bold">5. Privacy</h3>
-        <p class="text-muted">We collect only what's needed to run the service and never sell your data. See Privacy & safety for details.</p>
-        <h3 class="text-[15px] font-bold">6. Contact</h3>
-        <p class="text-muted">Questions? support@hearthside.app</p>
-        <p class="text-[12px] text-muted/70 mt-6">Last updated: January 2026</p>
-      </div>
-    `,
-  },
-};
-
-function openInfoSheet(key) {
-  const content = INFO_CONTENT[key];
-  if (!content) return;
-  $('#infoTitle').textContent = content.title;
-  $('#infoBody').innerHTML = content.html;
-  const sheet = $('#infoSheet');
-  const panel = $('#infoPanel');
-  panel.classList.remove('sheet-out');
-  panel.classList.add('sheet-in');
-  sheet.classList.remove('hidden');
-  sheet.classList.add('flex');
-}
-
-function closeInfoSheet() {
-  const sheet = $('#infoSheet');
-  const panel = $('#infoPanel');
-  if (!sheet || sheet.classList.contains('hidden')) return;
-  panel.classList.remove('sheet-in');
-  panel.classList.add('sheet-out');
-  setTimeout(() => {
-    sheet.classList.add('hidden');
-    sheet.classList.remove('flex');
-    panel.classList.remove('sheet-out');
-  }, 200);
+  $$('.interest-chip', container).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tag = btn.dataset.interest;
+      if (selectedSet.has(tag)) {
+        selectedSet.delete(tag);
+        btn.classList.remove('selected');
+      } else {
+        if (selectedSet.size >= maxSelect) {
+          toast(`You can pick up to ${maxSelect} interests`);
+          return;
+        }
+        selectedSet.add(tag);
+        btn.classList.add('selected');
+      }
+      if (typeof onChange === 'function') onChange(selectedSet);
+    });
+  });
 }
 
 /* ============================================================
@@ -1652,7 +1484,9 @@ function loadFilters() {
       min_age: Math.min(Math.max(parseInt(parsed.min_age, 10) || FILTER_DEFAULTS.min_age, 18), 100),
       max_age: Math.min(Math.max(parseInt(parsed.max_age, 10) || FILTER_DEFAULTS.max_age, 18), 100),
       gender:  ['any','woman','man','non-binary'].includes(parsed.gender) ? parsed.gender : 'any',
-      tags:    Array.isArray(parsed.tags) ? parsed.tags.slice(0, 8) : [],
+      tags:    Array.isArray(parsed.tags)
+        ? parsed.tags.filter((t) => INTEREST_OPTIONS.includes(t)).slice(0, 8)
+        : [],
     };
   } catch { return { ...FILTER_DEFAULTS }; }
 }
@@ -1696,13 +1530,17 @@ function openFilterSheet() {
 
   $$('.filter-gender-chip').forEach((chip) => chip.classList.toggle('selected', chip.dataset.gender === f.gender));
 
-  $('#filterTags').value = (f.tags || []).join(', ');
-  renderTagChips();
+  // Render interest chips with the current filter tags selected
+  const selected = new Set(f.tags || []);
+  renderInterestChips('interestChips', selected, 8, () => {
+    $('#filterInterestsCount').textContent = `${selected.size} selected`;
+  });
+  $('#filterInterestsCount').textContent = `${selected.size} selected`;
 
   const locked = !state.isPremium;
   $('#filterAgeLock').classList.toggle('hidden', !locked);
   $('#filterGenderLock').classList.toggle('hidden', !locked);
-  $('#filterTagsLock').classList.toggle('hidden', !locked);
+  $('#filterInterestsLock').classList.toggle('hidden', !locked);
   $('#filterPremiumUpsell').classList.toggle('hidden', !locked);
 
   const sheet = $('#filterModal');
@@ -1726,14 +1564,6 @@ function closeFilterSheet() {
   }, 200);
 }
 
-function renderTagChips() {
-  const raw = $('#filterTags').value;
-  const tags = raw.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8);
-  $('#filterTagChips').innerHTML = tags.map((t) =>
-    `<span class="px-2.5 py-1 rounded-full bg-hearth-50 text-hearth-600 text-[11px] font-semibold">${esc(t)}</span>`
-  ).join('');
-}
-
 function readFiltersFromUI() {
   const maxKm = parseInt($('#filterDistance').value, 10) || FILTER_DEFAULTS.max_km;
   let minAge = parseInt($('#filterMinAge').value, 10);
@@ -1744,7 +1574,8 @@ function readFiltersFromUI() {
 
   const selectedChip = $('.filter-gender-chip.selected');
   const gender = selectedChip?.dataset.gender || 'any';
-  const tags = $('#filterTags').value.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8);
+
+  const tags = $$('#interestChips .interest-chip.selected').map((b) => b.dataset.interest);
 
   return { max_km: maxKm, min_age: minAge, max_age: maxAge, gender, tags };
 }
@@ -1786,7 +1617,7 @@ function updateFilterButtonState() {
 function handleFilter() { openFilterSheet(); }
 
 /* ============================================================
- * 9. DISCOVER
+ * 9. DISCOVER — with profile lock for free users
  * ========================================================== */
 async function loadDeck() {
   let coords = null;
@@ -1814,7 +1645,6 @@ async function loadDeck() {
   } catch (err) {
     console.error('[discover] failed:', err);
     const detail = err.data?.detail || err.data?.error || err.message;
-
     if (err.status === 400 && err.data?.code === 'LOCATION_REQUIRED') {
       toast('Enable location in your browser, or add a city in Edit profile.', 5000);
     } else {
@@ -1845,37 +1675,94 @@ function getUserLocation() {
   });
 }
 
+/* ---------- Card renderer with premium lock ---------- */
 function cardHTML(profile, isTop) {
+  const isPremium = state.isPremium;
+
   const distance = profile.distance_label ||
     (profile.distance_km != null ? `${Math.round(profile.distance_km)} km away` : '');
-  const locationLine = [profile.city, distance].filter(Boolean).join(' • ');
-  const tags = (profile.tags || []).slice(0, 4).map((t) =>
-    `<span class="inline-flex px-3 py-1.5 rounded-full bg-white/15 backdrop-blur border border-white/25 text-[11.5px] font-medium">${esc(t)}</span>`
-  ).join('');
 
+  // ----- Premium: full card -----
+  if (isPremium) {
+    const locationLine = [profile.city, distance].filter(Boolean).join(' • ');
+    const tags = (profile.tags || []).slice(0, 4).map((t) =>
+      `<span class="inline-flex px-3 py-1.5 rounded-full bg-white/15 backdrop-blur border border-white/25 text-[11.5px] font-medium">${esc(t)}</span>`
+    ).join('');
+
+    return `
+      <article class="profile-card absolute inset-0 rounded-card overflow-hidden bg-hearth-100 shadow-card"
+               data-id="${esc(profile.id)}" style="z-index:${isTop ? 2 : 1};">
+        <img src="${esc(profile.avatar_url || '')}" data-fallback="${esc(profile.name)}"
+             alt="${esc(profile.name)}"
+             class="absolute inset-0 w-full h-full object-cover pointer-events-none" draggable="false" />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/5 pointer-events-none"></div>
+
+        ${distance ? `
+          <span class="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur text-white text-[11.5px] font-semibold">
+            ${esc(distance)}
+          </span>` : ''}
+
+        <div class="absolute bottom-0 left-0 right-0 p-5 text-white pointer-events-none">
+          <h2 class="text-[26px] font-extrabold tracking-[-0.02em] leading-tight">
+            ${esc(profile.name)}${profile.age ? `, ${esc(profile.age)}` : ''}
+          </h2>
+          ${locationLine ? `<p class="text-[12.5px] text-white/80 mt-1">${esc(locationLine)}</p>` : ''}
+          ${profile.bio ? `<p class="text-[13.5px] text-white/90 mt-2.5 leading-snug line-clamp-2">${esc(profile.bio)}</p>` : ''}
+          ${tags ? `<div class="flex flex-wrap gap-2 mt-3.5">${tags}</div>` : ''}
+        </div>
+      </article>
+    `;
+  }
+
+  // ----- Free: locked card — photo only -----
   return `
     <article class="profile-card absolute inset-0 rounded-card overflow-hidden bg-hearth-100 shadow-card"
              data-id="${esc(profile.id)}" style="z-index:${isTop ? 2 : 1};">
       <img src="${esc(profile.avatar_url || '')}" data-fallback="${esc(profile.name)}"
-           alt="${esc(profile.name)}"
+           alt=""
            class="absolute inset-0 w-full h-full object-cover pointer-events-none" draggable="false" />
-      <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/5 pointer-events-none"></div>
-      ${profile.is_premium ? `
-        <span class="absolute top-4 left-4 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
-          Member+
-        </span>` : ''}
+      <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 pointer-events-none"></div>
+
+      <!-- Distance still visible -->
       ${distance ? `
-        <span class="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur text-white text-[11.5px] font-semibold">
+        <span class="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur text-white text-[11.5px] font-semibold">
           ${esc(distance)}
         </span>` : ''}
+
+      <!-- Member+ badge on the top-left -->
+      <span class="absolute top-4 left-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide">
+        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/>
+          <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+        </svg>
+        Locked
+      </span>
+
+      <!-- Locked overlay content -->
       <div class="absolute bottom-0 left-0 right-0 p-5 text-white pointer-events-none">
-        <h2 class="text-[26px] font-extrabold tracking-[-0.02em] leading-tight">
-          ${esc(profile.name)}${profile.age ? `, ${esc(profile.age)}` : ''}
+        <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-hearth/95 backdrop-blur text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide mb-3">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
+          Unlock with Member+
+        </div>
+
+        <h2 class="text-[24px] font-extrabold tracking-[-0.02em] leading-tight">
+          <span class="locked-dots">•••••</span>
+          <span class="opacity-70">,</span>
+          <span class="locked-dots">••</span>
         </h2>
-        ${locationLine ? `<p class="text-[12.5px] text-white/80 mt-1">${esc(locationLine)}</p>` : ''}
-        ${profile.bio ? `<p class="text-[13.5px] text-white/90 mt-2.5 leading-snug line-clamp-2">${esc(profile.bio)}</p>` : ''}
-        ${tags ? `<div class="flex flex-wrap gap-2 mt-3.5">${tags}</div>` : ''}
+
+        <p class="text-[12.5px] text-white/80 mt-2">Name, age, bio and interests are hidden.</p>
+
+        <div class="mt-4 space-y-2">
+          <span class="locked-line" style="width: 62%"></span>
+          <span class="locked-line" style="width: 40%"></span>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mt-4">
+          <span class="inline-flex px-3 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/20 text-[11.5px] font-semibold opacity-70">•••</span>
+          <span class="inline-flex px-3 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/20 text-[11.5px] font-semibold opacity-70">•••</span>
+          <span class="inline-flex px-3 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/20 text-[11.5px] font-semibold opacity-70">•••</span>
+        </div>
       </div>
     </article>
   `;
@@ -2058,12 +1945,8 @@ async function renderLikes() {
   $('#likesUnlocked').classList.toggle('hidden', locked);
 
   let data;
-  try {
-    data = await api('/api/premium/likes');
-  } catch (err) {
-    console.warn('[likes] failed:', err.message);
-    data = { is_premium: state.isPremium, total: 0, likes: [] };
-  }
+  try { data = await api('/api/premium/likes'); }
+  catch (err) { console.warn('[likes] failed:', err.message); data = { is_premium: state.isPremium, total: 0, likes: [] }; }
 
   state.likesYouCount = data.total || 0;
   updateLikesBanner();
@@ -2810,7 +2693,269 @@ function handleUndo() {
 }
 
 /* ============================================================
- * 23. EVENT BINDING
+ * 23. PROFILE
+ * ========================================================== */
+async function renderProfile() {
+  const p = state.myProfile || {};
+
+  $('#profileName').textContent = `${p.name || 'You'}${p.age ? `, ${p.age}` : ''}`;
+
+  const metaParts = [];
+  if (p.city) metaParts.push(p.city);
+  if (p.gender) metaParts.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
+  $('#profileMetaLine').textContent = metaParts.join(' · ') || 'Add your city and details';
+
+  $('#profileBio').textContent = p.bio || 'No bio yet. Tap Edit profile to add one.';
+
+  $('#profileTags').innerHTML = (p.tags || []).length
+    ? (p.tags || []).map((t) =>
+        `<span class="px-2.5 py-1 rounded-full bg-hearth-50 text-hearth-600 text-[11px] font-semibold">${esc(t)}</span>`
+      ).join('')
+    : '<span class="text-[11.5px] text-muted">No interests yet</span>';
+
+  const avatarUrl = p.avatar_url || '';
+  $('#profileAvatar').src = avatarUrl;
+  $('#profileAvatar').dataset.fallback = p.name || 'You';
+  $('#profileCoverImg').src = avatarUrl;
+  $('#profileCoverImg').dataset.fallback = p.name || 'You';
+  wireFallbacks($('#screen-profile'));
+
+  $('#profilePremiumBadge').classList.toggle('hidden', !state.isPremium);
+  $('#profileMembershipSub').textContent = state.isPremium ? 'Member+ active' : 'Free plan';
+
+  if (!state.myProfile) {
+    try {
+      const { profile } = await api('/api/profiles/me');
+      state.myProfile = profile;
+      renderProfile();
+    } catch (err) {
+      console.warn('[profile] Could not fetch:', err.message);
+    }
+  }
+}
+
+function openEditProfile() {
+  const p = state.myProfile || {};
+  $('#editName').value = p.name || '';
+  $('#editAge').value = p.age ?? '';
+  $('#editGender').value = p.gender || '';
+  $('#editCity').value = p.city || '';
+  $('#editBio').value = p.bio || '';
+  $('#editAvatarUrl').value = p.avatar_url || '';
+
+  // Load user's tags into a Set for chips
+  state.editingTags = new Set((p.tags || []).filter((t) => INTEREST_OPTIONS.includes(t)));
+  renderInterestChips('editInterestChips', state.editingTags, 8);
+
+  updateEditAvatarPreview();
+  updateBioCount();
+  hideEditError();
+
+  const sheet = $('#editProfileSheet');
+  const panel = $('#editProfilePanel');
+  panel.classList.remove('sheet-out');
+  panel.classList.add('sheet-in');
+  sheet.classList.remove('hidden');
+  sheet.classList.add('flex');
+}
+
+function closeEditProfile() {
+  const sheet = $('#editProfileSheet');
+  const panel = $('#editProfilePanel');
+  if (!sheet || sheet.classList.contains('hidden')) return;
+  panel.classList.remove('sheet-in');
+  panel.classList.add('sheet-out');
+  setTimeout(() => {
+    sheet.classList.add('hidden');
+    sheet.classList.remove('flex');
+    panel.classList.remove('sheet-out');
+  }, 200);
+}
+
+function updateEditAvatarPreview() {
+  const url = $('#editAvatarUrl').value.trim();
+  const img = $('#editAvatarPreview');
+  img.dataset.fallback = $('#editName').value.trim() || 'You';
+  if (url) {
+    img.src = url;
+  } else {
+    const initial = ($('#editName').value.trim() || 'You').charAt(0).toUpperCase();
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">` +
+      `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
+      `<stop offset="0" stop-color="#F5B041"/><stop offset="1" stop-color="#E89B2A"/>` +
+      `</linearGradient></defs><rect width="200" height="200" fill="url(#g)"/>` +
+      `<text x="50%" y="55%" font-family="Inter,sans-serif" font-size="80" font-weight="700" ` +
+      `fill="#ffffff" text-anchor="middle" dominant-baseline="middle">${initial}</text></svg>`;
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+}
+
+function updateBioCount() {
+  const len = ($('#editBio').value || '').length;
+  $('#editBioCount').textContent = `${len} / 500`;
+}
+
+function showEditError(msg) { const el = $('#editProfileError'); el.textContent = msg; el.classList.remove('hidden'); }
+function hideEditError() { $('#editProfileError').classList.add('hidden'); }
+
+async function saveEditProfile() {
+  hideEditError();
+
+  const name = $('#editName').value.trim();
+  const age = $('#editAge').value;
+  const gender = $('#editGender').value;
+  const city = $('#editCity').value.trim();
+  const bio = $('#editBio').value.trim();
+  const avatar_url = $('#editAvatarUrl').value.trim();
+
+  if (!name) return showEditError('Please enter your name.');
+  if (age && (parseInt(age, 10) < 18)) return showEditError('You must be 18 or older.');
+
+  const tags = Array.from(state.editingTags).slice(0, 8);
+
+  const saveBtn = $('#editProfileSave');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+
+  try {
+    const payload = {
+      name,
+      age: age ? parseInt(age, 10) : undefined,
+      gender: gender || undefined,
+      city,
+      bio,
+      tags,
+      avatar_url,
+    };
+
+    const { profile } = await api('/api/profiles/me', { method: 'PUT', body: payload });
+
+    state.myProfile = profile;
+    renderProfile();
+
+    closeEditProfile();
+    toast('Profile updated');
+  } catch (err) {
+    console.error('[edit profile]', err);
+    showEditError(err.data?.detail || err.data?.error || err.message || 'Could not save.');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
+  }
+}
+
+const INFO_CONTENT = {
+  about: {
+    title: 'About Hearthside',
+    html: `
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-hearth shadow-amber flex items-center justify-center mb-3">
+          <svg class="w-8 h-8 text-charcoal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-7.5-4.7-9.4-9.2C1.1 8.2 3 5 6.3 5c2 0 3.4 1.1 4.2 2.3l1.5 2 1.5-2C14.3 6.1 15.7 5 17.7 5 21 5 22.9 8.2 21.4 11.8 19.5 16.3 12 21 12 21z"/>
+          </svg>
+        </div>
+        <h2 class="text-[20px] font-extrabold tracking-tight">Hearthside</h2>
+        <p class="text-[13px] text-muted mt-1">Version 1.0.0</p>
+      </div>
+      <div class="space-y-4 text-[14px] leading-relaxed text-charcoal">
+        <p>Hearthside is a warm, mobile-first dating app for meaningful connection — not endless swiping.</p>
+        <p>Our mission: help people find <b>real relationships</b> rooted in kindness, curiosity, and shared values.</p>
+        <p class="text-muted text-[13px]">Built with care in Addis Ababa. We'd love your feedback.</p>
+      </div>
+      <div class="mt-6 bg-hearth-50 rounded-card p-4 border border-hearth-200/70">
+        <p class="text-[12.5px] text-hearth-600 font-semibold text-center">Made for you, with love.</p>
+      </div>
+    `,
+  },
+  privacy: {
+    title: 'Privacy & safety',
+    html: `
+      <div class="space-y-5 text-[14px] leading-relaxed text-charcoal">
+        <div><h3 class="text-[15px] font-bold mb-1.5">Your data</h3>
+          <p class="text-muted text-[13.5px]">We store only what's needed to run Hearthside: your profile details, likes, matches, and messages. We never sell your data.</p></div>
+        <div><h3 class="text-[15px] font-bold mb-1.5">Location</h3>
+          <p class="text-muted text-[13.5px]">Your approximate distance is shown to other users, but your exact coordinates are never revealed.</p></div>
+        <div><h3 class="text-[15px] font-bold mb-1.5">Blocking & reporting</h3>
+          <p class="text-muted text-[13.5px]">You can unmatch or report anyone from the chat options menu. Reports are reviewed by our team.</p></div>
+        <div><h3 class="text-[15px] font-bold mb-1.5">Delete your account</h3>
+          <p class="text-muted text-[13.5px]">Sign out and contact us at support@hearthside.app to permanently delete your account.</p></div>
+      </div>
+    `,
+  },
+  help: {
+    title: 'Help centre',
+    html: `
+      <div class="space-y-4 text-[14px] leading-relaxed text-charcoal">
+        <div class="bg-white rounded-card border border-line p-4">
+          <h3 class="text-[14.5px] font-bold mb-1">How do I see full profiles?</h3>
+          <p class="text-muted text-[13.5px] mt-1">Free members see photos and distance only. Member+ reveals names, ages, bios and interests — plus advanced filters.</p>
+        </div>
+        <div class="bg-white rounded-card border border-line p-4">
+          <h3 class="text-[14.5px] font-bold mb-1">How do I pay for Member+?</h3>
+          <p class="text-muted text-[13.5px] mt-1">Tap "Unlock with Member+" anywhere in the app. Choose your plan, then complete the Tele Birr USSD payment.</p>
+        </div>
+        <div class="bg-white rounded-card border border-line p-4">
+          <h3 class="text-[14.5px] font-bold mb-1">Is messaging really free?</h3>
+          <p class="text-muted text-[13.5px] mt-1">Yes. Messaging with your matches is always free — forever. Member+ only adds discovery features.</p>
+        </div>
+        <div class="bg-white rounded-card border border-line p-4">
+          <h3 class="text-[14.5px] font-bold mb-1">Still stuck?</h3>
+          <p class="text-muted text-[13.5px] mt-1">Email us at support@hearthside.app and we'll help within 24 hours.</p>
+        </div>
+      </div>
+    `,
+  },
+  terms: {
+    title: 'Terms & privacy',
+    html: `
+      <div class="space-y-4 text-[13.5px] leading-relaxed text-charcoal">
+        <h3 class="text-[15px] font-bold">1. Eligibility</h3>
+        <p class="text-muted">You must be at least 18 years old to use Hearthside.</p>
+        <h3 class="text-[15px] font-bold">2. Your account</h3>
+        <p class="text-muted">You're responsible for keeping your password secure and for all activity on your account.</p>
+        <h3 class="text-[15px] font-bold">3. Community</h3>
+        <p class="text-muted">Be kind. No harassment, hate speech, impersonation, or illegal activity. We may remove accounts that break these rules.</p>
+        <h3 class="text-[15px] font-bold">4. Payments</h3>
+        <p class="text-muted">Member+ subscriptions are non-refundable once activated. Cancel anytime from the app.</p>
+        <h3 class="text-[15px] font-bold">5. Privacy</h3>
+        <p class="text-muted">We collect only what's needed to run the service and never sell your data. See Privacy & safety for details.</p>
+        <h3 class="text-[15px] font-bold">6. Contact</h3>
+        <p class="text-muted">Questions? support@hearthside.app</p>
+        <p class="text-[12px] text-muted/70 mt-6">Last updated: January 2026</p>
+      </div>
+    `,
+  },
+};
+
+function openInfoSheet(key) {
+  const content = INFO_CONTENT[key];
+  if (!content) return;
+  $('#infoTitle').textContent = content.title;
+  $('#infoBody').innerHTML = content.html;
+  const sheet = $('#infoSheet');
+  const panel = $('#infoPanel');
+  panel.classList.remove('sheet-out');
+  panel.classList.add('sheet-in');
+  sheet.classList.remove('hidden');
+  sheet.classList.add('flex');
+}
+
+function closeInfoSheet() {
+  const sheet = $('#infoSheet');
+  const panel = $('#infoPanel');
+  if (!sheet || sheet.classList.contains('hidden')) return;
+  panel.classList.remove('sheet-in');
+  panel.classList.add('sheet-out');
+  setTimeout(() => {
+    sheet.classList.add('hidden');
+    sheet.classList.remove('flex');
+    panel.classList.remove('sheet-out');
+  }, 200);
+}
+
+/* ============================================================
+ * 24. EVENT BINDING
  * ========================================================== */
 function bindEvents() {
   // Auth
@@ -2857,7 +3002,6 @@ function bindEvents() {
       chip.classList.add('selected');
     });
   });
-  $('#filterTags').addEventListener('input', renderTagChips);
   $('#filterUpgradeBtn').addEventListener('click', () => {
     closeFilterSheet();
     setTimeout(openPaywall, 220);
@@ -2924,32 +3068,24 @@ function bindEvents() {
   $('#fileInput').addEventListener('change', (e) => {
     const file = e.target.files?.[0];
     if (!file || !state.activeMatchId) return;
-
     if (file.size > 1024 * 1024) {
       toast('Image too large — max 1 MB');
       e.target.value = '';
       return;
     }
-
     const matchId = state.activeMatchId;
-
     const reader = new FileReader();
     reader.onload = async () => {
       const mediaUrl = reader.result;
-
       const localMsg = {
         id: 'local-img-' + Date.now(),
-        match_id: matchId,
-        sender_id: state.myId,
-        media_url: mediaUrl,
-        content: null,
+        match_id: matchId, sender_id: state.myId,
+        media_url: mediaUrl, content: null,
         created_at: new Date().toISOString(),
       };
-
       (state.messages[matchId] ||= []).push(localMsg);
       renderMessages();
       scrollChatToBottom();
-
       const match = state.matches.find((m) => m.id === matchId);
       if (match) match.last_message = localMsg;
 
@@ -2966,7 +3102,6 @@ function bindEvents() {
         }
         toast('Photo sent');
       } catch (err) {
-        console.error('[image send]', err);
         toast(err.data?.detail || 'Could not send photo');
       }
     };
@@ -3038,8 +3173,7 @@ function bindEvents() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
     await loadDeck();
-    showScreen('likes');
-    await renderLikes();
+    showScreen('discover');
   });
 
   // Escape
@@ -3062,7 +3196,7 @@ function bindEvents() {
 }
 
 /* ============================================================
- * 24. BOOT
+ * 25. BOOT
  * ========================================================== */
 async function enterApp() {
   const { data: { user } } = await supabase.auth.getUser();
