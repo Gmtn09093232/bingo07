@@ -27,6 +27,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const FREE_LIKE_LIMIT = parseInt(FREE_DAILY_LIKES, 10) || 8;
 const FREE_MAX_KM = 100;
 const PREMIUM_MAX_KM = 500;
+const MAX_EXTRA_PHOTOS = 3;          // avatar + 3 = 4 photos total
 
 const PLANS = {
   monthly: { amount_etb: 450, days: 30, label: 'Member+ Monthly' },
@@ -38,7 +39,7 @@ const app = express();
 /* -------------------- MIDDLEWARE -------------------- */
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
 app.use('/api/payments/telebirr/webhook', express.raw({ type: '*/*', limit: '1mb' }));
-app.use(express.json({ limit: '4mb' }));   // 4mb allows base64 photos up to ~3 MB
+app.use(express.json({ limit: '6mb' }));  // 6mb for base64 photos
 
 app.get('/config.js', (_req, res) => {
   const url = process.env.SUPABASE_URL || '';
@@ -52,7 +53,7 @@ app.get('/config.js', (_req, res) => {
   );
 });
 
-app.use(express.static(path.join(__dirname, '')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 /* -------------------- SUPABASE -------------------- */
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -85,6 +86,47 @@ function isNewDay(lastReset) {
 }
 
 function sortPair(a, b) { return a < b ? [a, b] : [b, a]; }
+
+/** Attach photos array (sorted by position) to a profile object. */
+async function attachPhotos(profile) {
+  if (!profile) return profile;
+  const { data } = await supabaseAdmin
+    .from('photos')
+    .select('id, photo_url, position')
+    .eq('user_id', profile.id)
+    .order('position', { ascending: true });
+
+  // Build photo list: avatar first, then extras
+  const photos = [];
+  if (profile.avatar_url) photos.push({ id: 'avatar', photo_url: profile.avatar_url, position: -1 });
+  for (const p of data || []) photos.push(p);
+
+  return { ...profile, photos };
+}
+
+/** Attach photos to an array of profiles in one DB round trip. */
+async function attachPhotosBatch(profiles) {
+  if (!profiles?.length) return [];
+  const ids = profiles.map((p) => p.id);
+
+  const { data: photoRows } = await supabaseAdmin
+    .from('photos')
+    .select('id, user_id, photo_url, position')
+    .in('user_id', ids)
+    .order('position', { ascending: true });
+
+  const byUser = {};
+  for (const p of photoRows || []) {
+    (byUser[p.user_id] ||= []).push(p);
+  }
+
+  return profiles.map((p) => {
+    const photos = [];
+    if (p.avatar_url) photos.push({ id: 'avatar', photo_url: p.avatar_url, position: -1 });
+    for (const extra of byUser[p.id] || []) photos.push(extra);
+    return { ...p, photos };
+  });
+}
 
 /* -------------------- AUTH -------------------- */
 async function requireAuth(req, res, next) {
@@ -153,7 +195,8 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/profiles/me', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
-    res.json({ profile: me });
+    const withPhotos = await attachPhotos(me);
+    res.json({ profile: withPhotos, max_extra_photos: MAX_EXTRA_PHOTOS });
   } catch (err) {
     console.error('[GET /api/profiles/me]', err);
     res.status(500).json({ error: 'Failed to load profile', detail: err.message });
@@ -206,10 +249,93 @@ app.put('/api/profiles/me', requireAuth, async (req, res) => {
       .from('profiles').update(patch).eq('id', me.id).select('*').single();
     if (error) throw error;
 
-    res.json({ profile: updated });
+    const withPhotos = await attachPhotos(updated);
+    res.json({ profile: withPhotos, max_extra_photos: MAX_EXTRA_PHOTOS });
   } catch (err) {
     console.error('[PUT /api/profiles/me]', err);
     res.status(500).json({ error: 'Failed to update profile', detail: err.message });
+  }
+});
+
+/* -------------------- PHOTOS -------------------- */
+app.get('/api/photos/me', requireAuth, async (req, res) => {
+  try {
+    const me = await ensureProfile(req);
+    const { data: photos } = await supabaseAdmin
+      .from('photos').select('*').eq('user_id', me.id).order('position', { ascending: true });
+    res.json({
+      photos: photos || [],
+      max_extra_photos: MAX_EXTRA_PHOTOS,
+    });
+  } catch (err) {
+    console.error('[GET /api/photos/me]', err);
+    res.status(500).json({ error: 'Failed to load photos', detail: err.message });
+  }
+});
+
+app.post('/api/photos', requireAuth, async (req, res) => {
+  try {
+    const me = await ensureProfile(req);
+    const { photo_url } = req.body || {};
+
+    if (!photo_url || typeof photo_url !== 'string') {
+      return res.status(400).json({ error: 'photo_url is required' });
+    }
+    if (photo_url.length > 5 * 1024 * 1024) {
+      return res.status(413).json({ error: 'Photo too large', detail: 'Max ~3 MB after encoding.' });
+    }
+    if (!/^https?:\/\//i.test(photo_url) && !photo_url.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'Invalid photo URL' });
+    }
+
+    // Enforce the cap
+    const { count } = await supabaseAdmin
+      .from('photos').select('*', { count: 'exact', head: true }).eq('user_id', me.id);
+    if ((count || 0) >= MAX_EXTRA_PHOTOS) {
+      return res.status(429).json({
+        error: `You can have up to ${MAX_EXTRA_PHOTOS} additional photos.`,
+        code: 'PHOTO_LIMIT_REACHED',
+      });
+    }
+
+    const { data: inserted, error } = await supabaseAdmin
+      .from('photos')
+      .insert({ user_id: me.id, photo_url, position: count || 0 })
+      .select('*').single();
+    if (error) throw error;
+
+    console.log(`[photos] Added photo for ${me.id} (${count + 1}/${MAX_EXTRA_PHOTOS})`);
+    res.status(201).json({ photo: inserted, max_extra_photos: MAX_EXTRA_PHOTOS });
+  } catch (err) {
+    console.error('[POST /api/photos]', err);
+    res.status(500).json({ error: 'Failed to add photo', detail: err.message });
+  }
+});
+
+app.delete('/api/photos/:id', requireAuth, async (req, res) => {
+  try {
+    const me = await ensureProfile(req);
+    const { id } = req.params;
+
+    const { data: photo } = await supabaseAdmin
+      .from('photos').select('*').eq('id', id).eq('user_id', me.id).maybeSingle();
+    if (!photo) return res.status(404).json({ error: 'Photo not found' });
+
+    await supabaseAdmin.from('photos').delete().eq('id', id);
+
+    // Re-pack positions so they stay 0,1,2
+    const { data: remaining } = await supabaseAdmin
+      .from('photos').select('id').eq('user_id', me.id).order('position', { ascending: true });
+
+    for (let i = 0; i < (remaining || []).length; i++) {
+      await supabaseAdmin.from('photos').update({ position: i }).eq('id', remaining[i].id);
+    }
+
+    console.log(`[photos] Removed photo ${id} for ${me.id}`);
+    res.json({ ok: true, max_extra_photos: MAX_EXTRA_PHOTOS });
+  } catch (err) {
+    console.error('[DELETE /api/photos]', err);
+    res.status(500).json({ error: 'Failed to delete photo', detail: err.message });
   }
 });
 
@@ -282,7 +408,12 @@ app.get('/api/discover', requireAuth, async (req, res) => {
       return true;
     });
 
-    profiles = profiles.slice(0, limit).map((p) => ({
+    profiles = profiles.slice(0, limit);
+
+    // Attach photos to every profile in one batch
+    profiles = await attachPhotosBatch(profiles);
+
+    profiles = profiles.map((p) => ({
       ...p,
       distance_km: p.distance_km !== null ? Number(p.distance_km.toFixed(2)) : null,
       distance_label: formatDistance(p.distance_km),
@@ -369,7 +500,9 @@ app.post('/api/likes', requireAuth, async (req, res) => {
       .from('profiles').select('id, name, age, city, avatar_url, tags, bio')
       .eq('id', likee_id).single();
 
-    res.status(201).json({ matched: true, match, partner: other, like: likeRow, likes: likesMeta });
+    const partnerWithPhotos = await attachPhotos(other);
+
+    res.status(201).json({ matched: true, match, partner: partnerWithPhotos, like: likeRow, likes: likesMeta });
   } catch (err) {
     console.error('[POST /api/likes]', err);
     res.status(500).json({ error: 'Failed to record like', detail: err.message });
@@ -394,6 +527,10 @@ app.get('/api/matches', requireAuth, async (req, res) => {
       .in('id', partnerIds);
     const partnerMap = Object.fromEntries((partners || []).map((p) => [p.id, p]));
 
+    // Batch-attach photos to partners
+    const partnersWithPhotos = await attachPhotosBatch(Object.values(partnerMap));
+    const partnerPhotoMap = Object.fromEntries(partnersWithPhotos.map((p) => [p.id, p]));
+
     const matchIds = rows.map((m) => m.id);
     const { data: msgs } = await supabaseAdmin
       .from('messages')
@@ -410,7 +547,7 @@ app.get('/api/matches', requireAuth, async (req, res) => {
 
     const matches = rows.map((m) => {
       const partnerId = m.user1_id === me.id ? m.user2_id : m.user1_id;
-      const partner = partnerMap[partnerId];
+      const partner = partnerPhotoMap[partnerId];
       if (!partner) return null;
       return {
         id: m.id, created_at: m.created_at, partner,
@@ -471,7 +608,9 @@ app.get('/api/messages/:matchId', requireAuth, async (req, res) => {
       .from('profiles').select('id, name, age, city, avatar_url, bio, tags')
       .eq('id', partnerId).single();
 
-    res.json({ match, partner, messages: messages || [] });
+    const partnerWithPhotos = await attachPhotos(partner);
+
+    res.json({ match, partner: partnerWithPhotos, messages: messages || [] });
   } catch (err) {
     console.error('[GET /api/messages]', err);
     res.status(500).json({ error: 'Failed to load messages', detail: err.message });
@@ -485,7 +624,6 @@ app.post('/api/messages', requireAuth, async (req, res) => {
     if (!match_id) return res.status(400).json({ error: 'match_id is required' });
     if (!content && !media_url) return res.status(400).json({ error: 'Provide content or media_url' });
 
-    // Size guard for base64 media
     if (media_url && typeof media_url === 'string' && media_url.length > 4 * 1024 * 1024) {
       return res.status(413).json({ error: 'Image too large', detail: 'Max ~3 MB after encoding.' });
     }
@@ -538,7 +676,8 @@ app.get('/api/premium/likes', requireAuth, async (req, res) => {
       .from('profiles').select('id, name, age, city, avatar_url, bio, tags')
       .in('id', likerIds);
 
-    const profileMap = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
+    const profilesWithPhotos = await attachPhotosBatch(profiles || []);
+    const profileMap = Object.fromEntries(profilesWithPhotos.map((p) => [p.id, p]));
 
     if (me.is_premium) {
       const likes = rows.map((r) => {
@@ -651,7 +790,7 @@ app.post('/api/payments/telebirr/webhook', (_req, res) => {
   res.json({ received: true });
 });
 
-/* -------------------- DEBUG (dev-only) -------------------- */
+/* -------------------- DEBUG -------------------- */
 app.get('/api/debug/discover', requireAuth, async (req, res) => {
   try {
     const me = await ensureProfile(req);
@@ -666,14 +805,16 @@ app.get('/api/debug/discover', requireAuth, async (req, res) => {
     const { count: swiped } = await supabaseAdmin
       .from('likes').select('*', { count: 'exact', head: true })
       .eq('liker_id', me.id);
+    const { count: myPhotos } = await supabaseAdmin
+      .from('photos').select('*', { count: 'exact', head: true })
+      .eq('user_id', me.id);
 
     res.json({
       me: {
         id: me.id,
         has_coords: me.latitude !== null && me.longitude !== null,
-        latitude: me.latitude,
-        longitude: me.longitude,
         is_premium: me.is_premium,
+        photo_count: myPhotos || 0,
       },
       total_profiles: totalProfiles,
       with_coords: withCoords,
@@ -701,6 +842,7 @@ app.listen(PORT, () => {
   console.log(`  Health check:  http://localhost:${PORT}/api/health`);
   console.log(`  Free like cap: ${FREE_LIKE_LIMIT}/day`);
   console.log(`  Distance cap:  ${FREE_MAX_KM}km free · ${PREMIUM_MAX_KM}km premium`);
+  console.log(`  Photos/user:   1 avatar + ${MAX_EXTRA_PHOTOS} extras`);
   console.log(`  Tele Birr:     ${TELEBIRR_API_KEY ? 'LIVE' : 'USSD (manual confirmation)'}\n`);
 });
 
