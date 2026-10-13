@@ -104,7 +104,6 @@
 
   .filter-gender-chip.selected { background:#F5B041; border-color:#F5B041; color:#1A1A1A; font-weight:700; }
 
-  /* Interest chip */
   .interest-chip {
     display:inline-flex; align-items:center; gap:6px;
     padding: 9px 13px; border-radius: 999px;
@@ -118,18 +117,11 @@
   .interest-chip.selected .interest-check { display:inline-flex; }
   .interest-chip .interest-check { display:none; }
 
-  /* Locked placeholder text in profile cards */
-  .locked-dots {
-    display:inline-block;
-    letter-spacing: 0.35em;
-    color:#ffffff;
-  }
-  .locked-line {
-    background: rgba(255,255,255,0.25);
-    border-radius: 999px;
-    height: 8px;
-    display:block;
-  }
+  .locked-dots { display:inline-block; letter-spacing: 0.35em; color:#ffffff; }
+  .locked-line { background: rgba(255,255,255,0.25); border-radius: 999px; height: 8px; display:block; }
+
+  /* Photo carousel tap zones */
+  .photo-prev, .photo-next { background: transparent; border: none; }
 </style>
 </head>
 
@@ -380,6 +372,9 @@
           <button id="profileEditBtn" class="mt-5 w-full py-3.5 rounded-full bg-hearth shadow-amber font-extrabold text-[14.5px] active:scale-[.98] transition">
             Edit profile
           </button>
+
+          <!-- Photo gallery strip -->
+          <div id="profilePhotoStrip" class="mt-5"></div>
         </div>
       </div>
     </div>
@@ -641,7 +636,6 @@
 
     <div class="flex-1 overflow-y-auto no-scrollbar px-5 py-5 space-y-6" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
 
-      <!-- DISTANCE -->
       <section>
         <div class="flex items-baseline justify-between mb-2">
           <label class="text-[13px] font-bold text-charcoal">Maximum distance</label>
@@ -655,7 +649,6 @@
         <p id="filterDistanceHint" class="hidden text-[11.5px] text-amber-600 mt-2 bg-amber-50 border border-amber-100 rounded-[10px] px-2.5 py-2"></p>
       </section>
 
-      <!-- AGE (premium) -->
       <section class="relative" id="filterAgeSection">
         <div class="flex items-baseline justify-between mb-2">
           <label class="text-[13px] font-bold text-charcoal">Age range</label>
@@ -682,7 +675,6 @@
         </div>
       </section>
 
-      <!-- GENDER (premium) -->
       <section class="relative" id="filterGenderSection">
         <label class="block text-[13px] font-bold text-charcoal mb-2">Show me</label>
         <div class="grid grid-cols-2 gap-2">
@@ -700,7 +692,6 @@
         </div>
       </section>
 
-      <!-- INTERESTS (premium) -->
       <section class="relative" id="filterInterestsSection">
         <div class="flex items-baseline justify-between mb-1">
           <label class="text-[13px] font-bold text-charcoal">Interests</label>
@@ -708,9 +699,7 @@
         </div>
         <p class="text-[11.5px] text-muted mb-3">Pick up to 8. You'll see people who share at least one.</p>
 
-        <div id="interestChips" class="flex flex-wrap gap-2">
-          <!-- Injected by JS -->
-        </div>
+        <div id="interestChips" class="flex flex-wrap gap-2"></div>
 
         <div id="filterInterestsLock" class="hidden absolute inset-0 rounded-[14px] bg-white/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-center">
           <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide mb-2">
@@ -721,7 +710,6 @@
         </div>
       </section>
 
-      <!-- PREMIUM UPSELL -->
       <div id="filterPremiumUpsell" class="hidden bg-hearth-50 border border-hearth-200/70 rounded-card p-4">
         <p class="text-[13px] font-bold text-charcoal">Want more control?</p>
         <p class="text-[12px] text-muted mt-1 leading-relaxed">
@@ -732,7 +720,6 @@
           Unlock with Member+
         </button>
       </div>
-
     </div>
 
     <div class="shrink-0 px-5 py-4 border-t border-line/70" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
@@ -803,6 +790,13 @@
         <span id="editBioCount" class="block text-[11px] text-muted text-right mt-1">0 / 500</span>
       </label>
 
+      <!-- Photos -->
+      <div class="mb-5">
+        <span class="text-[12px] font-semibold text-muted">Your photos</span>
+        <span class="block text-[11px] text-muted mt-0.5 mb-3">1 main photo + up to 3 extra photos.</span>
+        <div id="editPhotosGrid"></div>
+      </div>
+
       <div class="mb-4">
         <span class="text-[12px] font-semibold text-muted">Interests</span>
         <span class="block text-[11px] text-muted mt-0.5 mb-3">Pick up to 8 that describe you.</span>
@@ -810,8 +804,8 @@
       </div>
 
       <label class="block mb-3">
-        <span class="text-[12px] font-semibold text-muted">Avatar image URL</span>
-        <span class="block text-[11px] text-muted mt-0.5">Paste a link to a photo (https://…)</span>
+        <span class="text-[12px] font-semibold text-muted">Main avatar URL</span>
+        <span class="block text-[11px] text-muted mt-0.5">Paste a link to your main photo (https://…)</span>
         <input id="editAvatarUrl" type="url" placeholder="https://example.com/me.jpg"
           class="mt-1.5 w-full h-12 rounded-[14px] bg-white border border-line px-4 text-[14.5px] outline-none focus:border-hearth-300 focus:ring-2 focus:ring-hearth-100 transition" />
       </label>
@@ -1056,6 +1050,9 @@
           <div id="profileSheetTags" class="flex flex-wrap gap-1.5 mt-2.5"></div>
         </div>
       </div>
+
+      <div id="profileSheetPhotos" class="mt-4 grid grid-cols-4 gap-2"></div>
+
       <div class="mt-5">
         <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted mb-2">About</p>
         <p id="profileSheetBio" class="text-[14px] leading-relaxed text-charcoal whitespace-pre-wrap">No bio yet.</p>
@@ -1124,9 +1121,6 @@ const USSD_CODES = {
   yearly:  `*127*2*${TELEBIRR_RECEIVING_PHONE}*4500#`,
 };
 
-/* ============================================================
- * Predefined interest list — shown as chips
- * ========================================================== */
 const INTEREST_OPTIONS = [
   'Music',      'Baking',     'Cycling',     'Coffee',
   'Running',    'Cooking',    'Travel',      'Books',
@@ -1135,6 +1129,8 @@ const INTEREST_OPTIONS = [
   'Photography','Dancing',    'Football',    'Gym',
   'Meditation', 'Painting',   'Writing',     'Chess',
 ];
+
+const MAX_EXTRA_PHOTOS = 3;
 
 const FEATURES = [
   'See everyone who liked you',
@@ -1171,7 +1167,9 @@ const state = {
   mutedMatches: new Set(),
   pendingUssd: null,
   filters: { ...FILTER_DEFAULTS },
-  editingTags: new Set(),   // for edit profile sheet
+  editingTags: new Set(),
+  editingPhotos: [],
+  cardPhotoIndex: {},
 };
 
 /* ============================================================
@@ -1218,6 +1216,23 @@ function fmtDuration(seconds) {
   const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
   const ss = String(seconds % 60).padStart(2, '0');
   return `${mm}:${ss}`;
+}
+
+/** Build the photo list for a profile. Avatar first, then extras. */
+function getPhotoList(profile) {
+  if (!profile) return [];
+  if (profile.photos?.length) {
+    // Ensure avatar is first if present
+    const avatar = profile.photos.find((p) => p.id === 'avatar');
+    const extras = profile.photos.filter((p) => p.id !== 'avatar');
+    return avatar ? [avatar, ...extras] : profile.photos;
+  }
+  return profile.avatar_url ? [{ id: 'avatar', photo_url: profile.avatar_url, position: -1 }] : [];
+}
+
+/** Get first photo URL (avatar or fallback). */
+function firstPhotoUrl(profile) {
+  return getPhotoList(profile)[0]?.photo_url || profile?.avatar_url || '';
 }
 
 let toastTimer;
@@ -1331,6 +1346,8 @@ async function handleSignOut() {
   state.pendingUssd = null;
   state.mutedMatches.clear();
   state.editingTags.clear();
+  state.editingPhotos = [];
+  state.cardPhotoIndex = {};
   if (state.realtimeChannel) { supabase.removeChannel(state.realtimeChannel); state.realtimeChannel = null; }
 
   endCall(true);
@@ -1432,7 +1449,7 @@ function renderLikesMeter() {
 }
 
 /* ============================================================
- * 7. INTEREST CHIPS (shared renderer)
+ * 7. INTEREST CHIPS
  * ========================================================== */
 function renderInterestChips(containerId, selectedSet, maxSelect, onChange) {
   const container = document.getElementById(containerId);
@@ -1530,7 +1547,6 @@ function openFilterSheet() {
 
   $$('.filter-gender-chip').forEach((chip) => chip.classList.toggle('selected', chip.dataset.gender === f.gender));
 
-  // Render interest chips with the current filter tags selected
   const selected = new Set(f.tags || []);
   renderInterestChips('interestChips', selected, 8, () => {
     $('#filterInterestsCount').textContent = `${selected.size} selected`;
@@ -1617,16 +1633,15 @@ function updateFilterButtonState() {
 function handleFilter() { openFilterSheet(); }
 
 /* ============================================================
- * 9. DISCOVER — with profile lock for free users
+ * 9. DISCOVER
  * ========================================================== */
 async function loadDeck() {
   let coords = null;
   try { coords = await getUserLocation(); }
-  catch (geoErr) { console.warn('[discover] geolocation denied — falling back to profile coords'); }
+  catch (geoErr) { console.warn('[discover] geolocation denied'); }
 
   const f = state.filters;
   const params = new URLSearchParams();
-
   if (coords) {
     params.set('lat', coords.lat);
     params.set('lng', coords.lng);
@@ -1656,6 +1671,7 @@ async function loadDeck() {
   }
 
   state.deck = (data.profiles || []).slice();
+  state.cardPhotoIndex = {};
   if (data.likes) {
     state.likes.used = data.likes.used ?? 0;
     state.likes.limit = data.likes.limit ?? 8;
@@ -1675,12 +1691,31 @@ function getUserLocation() {
   });
 }
 
-/* ---------- Card renderer with premium lock ---------- */
+/* ---------- Card renderer with photo carousel ---------- */
 function cardHTML(profile, isTop) {
   const isPremium = state.isPremium;
+  const photos = getPhotoList(profile);
+  const idx = state.cardPhotoIndex[profile.id] ?? 0;
+  const currentPhoto = photos[idx]?.photo_url || '';
 
   const distance = profile.distance_label ||
     (profile.distance_km != null ? `${Math.round(profile.distance_km)} km away` : '');
+
+  const dots = photos.length > 1
+    ? `
+      <div class="photo-dots absolute top-2 left-1/2 -translate-x-1/2 flex gap-1 z-10 pointer-events-none">
+        ${photos.map((_, i) =>
+          `<span class="h-1 rounded-full transition-all ${i === idx ? 'w-6 bg-white' : 'w-4 bg-white/40'}"></span>`
+        ).join('')}
+      </div>`
+    : '';
+
+  const tapZones = photos.length > 1
+    ? `
+      <button type="button" class="photo-prev absolute left-0 top-0 bottom-0 w-1/3 z-20" data-dir="prev" aria-label="Previous photo"></button>
+      <button type="button" class="photo-next absolute right-0 top-0 bottom-0 w-1/3 z-20" data-dir="next" aria-label="Next photo"></button>
+    `
+    : '';
 
   // ----- Premium: full card -----
   if (isPremium) {
@@ -1692,17 +1727,19 @@ function cardHTML(profile, isTop) {
     return `
       <article class="profile-card absolute inset-0 rounded-card overflow-hidden bg-hearth-100 shadow-card"
                data-id="${esc(profile.id)}" style="z-index:${isTop ? 2 : 1};">
-        <img src="${esc(profile.avatar_url || '')}" data-fallback="${esc(profile.name)}"
+        <img src="${esc(currentPhoto)}" data-fallback="${esc(profile.name)}"
              alt="${esc(profile.name)}"
              class="absolute inset-0 w-full h-full object-cover pointer-events-none" draggable="false" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-black/5 pointer-events-none"></div>
+        ${dots}
+        ${tapZones}
 
         ${distance ? `
-          <span class="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur text-white text-[11.5px] font-semibold">
+          <span class="absolute top-6 right-4 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur text-white text-[11.5px] font-semibold z-10">
             ${esc(distance)}
           </span>` : ''}
 
-        <div class="absolute bottom-0 left-0 right-0 p-5 text-white pointer-events-none">
+        <div class="absolute bottom-0 left-0 right-0 p-5 text-white pointer-events-none z-10">
           <h2 class="text-[26px] font-extrabold tracking-[-0.02em] leading-tight">
             ${esc(profile.name)}${profile.age ? `, ${esc(profile.age)}` : ''}
           </h2>
@@ -1714,23 +1751,23 @@ function cardHTML(profile, isTop) {
     `;
   }
 
-  // ----- Free: locked card — photo only -----
+  // ----- Free: locked card -----
   return `
     <article class="profile-card absolute inset-0 rounded-card overflow-hidden bg-hearth-100 shadow-card"
              data-id="${esc(profile.id)}" style="z-index:${isTop ? 2 : 1};">
-      <img src="${esc(profile.avatar_url || '')}" data-fallback="${esc(profile.name)}"
+      <img src="${esc(currentPhoto)}" data-fallback="?"
            alt=""
            class="absolute inset-0 w-full h-full object-cover pointer-events-none" draggable="false" />
       <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 pointer-events-none"></div>
+      ${dots}
+      ${tapZones}
 
-      <!-- Distance still visible -->
       ${distance ? `
-        <span class="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur text-white text-[11.5px] font-semibold">
+        <span class="absolute top-6 right-4 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur text-white text-[11.5px] font-semibold z-10">
           ${esc(distance)}
         </span>` : ''}
 
-      <!-- Member+ badge on the top-left -->
-      <span class="absolute top-4 left-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide">
+      <span class="absolute top-6 left-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-hearth text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide z-10">
         <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
           <rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/>
           <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
@@ -1738,8 +1775,7 @@ function cardHTML(profile, isTop) {
         Locked
       </span>
 
-      <!-- Locked overlay content -->
-      <div class="absolute bottom-0 left-0 right-0 p-5 text-white pointer-events-none">
+      <div class="absolute bottom-0 left-0 right-0 p-5 text-white pointer-events-none z-10">
         <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-hearth/95 backdrop-blur text-charcoal text-[10.5px] font-extrabold uppercase tracking-wide mb-3">
           <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.6 6.5L21 11l-6.4 2.5L12 20l-2.6-6.5L3 11l6.4-2.5z"/></svg>
           Unlock with Member+
@@ -1795,7 +1831,48 @@ function renderDeck() {
 
   stack.innerHTML = (state.deck[1] ? cardHTML(state.deck[1], false) : '') + cardHTML(top, true);
   wireFallbacks(stack);
-  attachSwipe($('.profile-card[style*="z-index:2"]', stack));
+
+  // Wire photo navigation
+  $$('.photo-prev, .photo-next', stack).forEach((btn) => {
+    btn.addEventListener('pointerdown', (e) => e.stopPropagation());
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const card = btn.closest('.profile-card');
+      const id = card?.dataset.id;
+      const profile = state.deck.find((p) => p.id === id);
+      if (!profile) return;
+      const photos = getPhotoList(profile);
+      if (photos.length <= 1) return;
+
+      const dir = btn.dataset.dir;
+      const current = state.cardPhotoIndex[id] ?? 0;
+      const next = dir === 'next'
+        ? (current + 1) % photos.length
+        : (current - 1 + photos.length) % photos.length;
+
+      state.cardPhotoIndex[id] = next;
+
+      const img = card.querySelector('img');
+      if (img) {
+        img.style.transition = 'opacity .15s ease';
+        img.style.opacity = '0';
+        setTimeout(() => {
+          img.src = photos[next].photo_url;
+          img.style.opacity = '1';
+        }, 90);
+      }
+
+      const dotsEl = card.querySelector('.photo-dots');
+      if (dotsEl) {
+        Array.from(dotsEl.children).forEach((dot, i) => {
+          dot.className = `h-1 rounded-full transition-all ${i === next ? 'w-6 bg-white' : 'w-4 bg-white/40'}`;
+        });
+      }
+    });
+  });
+
+  const topCard = $('.profile-card[style*="z-index:2"]', stack);
+  attachSwipe(topCard);
 }
 
 function attachSwipe(card) {
@@ -1804,6 +1881,8 @@ function attachSwipe(card) {
 
   const onDown = (e) => {
     if (state.animating) return;
+    // Ignore if user tapped a photo nav button
+    if (e.target.closest('.photo-prev, .photo-next')) return;
     dragging = true;
     const p = e.touches ? e.touches[0] : e;
     startX = p.clientX; startY = p.clientY; dx = 0; dy = 0;
@@ -1911,9 +1990,9 @@ let pendingMatch = null;
 function showMatchModal(partner) {
   pendingMatch = partner;
   $('#matchModalName').textContent = partner.name;
-  $('#matchAvatarMe').src = state.myProfile?.avatar_url || '';
+  $('#matchAvatarMe').src = firstPhotoUrl(state.myProfile) || '';
   $('#matchAvatarMe').dataset.fallback = state.myProfile?.name || 'You';
-  $('#matchAvatarThem').src = partner.avatar_url || '';
+  $('#matchAvatarThem').src = firstPhotoUrl(partner) || '';
   $('#matchAvatarThem').dataset.fallback = partner.name;
   wireFallbacks($('#matchModal'));
   const modal = $('#matchModal');
@@ -1999,7 +2078,7 @@ async function renderLikes() {
       <button class="text-left bg-white rounded-card overflow-hidden shadow-soft border border-line/70 active:scale-[.985] transition like-card"
               data-name="${esc(p.name || '')}">
         <div class="relative aspect-[4/5] bg-hearth-100">
-          <img src="${esc(p.avatar_url || '')}" data-fallback="${esc(p.name || '?')}"
+          <img src="${esc(firstPhotoUrl(p))}" data-fallback="${esc(p.name || '?')}"
                class="absolute inset-0 w-full h-full object-cover" alt="" />
           ${l.already_matched ? `<span class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">Matched</span>` : ''}
         </div>
@@ -2041,7 +2120,7 @@ async function renderMatches() {
       <button class="text-left bg-white rounded-card overflow-hidden shadow-soft border border-line/70 active:scale-[.985] transition match-card"
               data-match="${esc(m.id)}">
         <div class="relative aspect-[4/5] bg-hearth-100">
-          <img src="${esc(p.avatar_url || '')}" data-fallback="${esc(p.name || '?')}"
+          <img src="${esc(firstPhotoUrl(p))}" data-fallback="${esc(p.name || '?')}"
                class="absolute inset-0 w-full h-full object-cover" alt="" />
           <div class="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 to-transparent"></div>
           ${m.unread_count ? `
@@ -2096,7 +2175,7 @@ async function renderThreads() {
       <button class="w-full flex items-center gap-3 bg-white rounded-card border border-line/70 shadow-soft p-3 text-left active:scale-[.99] transition thread"
               data-match="${esc(m.id)}">
         <div class="relative shrink-0">
-          <img src="${esc(p.avatar_url || '')}" data-fallback="${esc(p.name || '?')}"
+          <img src="${esc(firstPhotoUrl(p))}" data-fallback="${esc(p.name || '?')}"
                class="w-[52px] h-[52px] rounded-full object-cover bg-hearth-100" alt="" />
           ${m.unread_count && !muted ? `<span class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-hearth border-2 border-white"></span>` : ''}
         </div>
@@ -2133,7 +2212,7 @@ async function openChat(matchId) {
 
   $('#chatName').textContent = p.name || 'Match';
   $('#bannerName').textContent = p.name || 'Match';
-  $('#chatAvatar').src = p.avatar_url || '';
+  $('#chatAvatar').src = firstPhotoUrl(p);
   $('#chatAvatar').dataset.fallback = p.name || '?';
   wireFallbacks($('#chatAvatar'));
 
@@ -2253,11 +2332,11 @@ function openCall(kind) {
 
   $('#callKindLabel').textContent = kind === 'video' ? 'Video call' : 'Voice call';
   $('#callPartnerName').textContent = p.name || 'Match';
-  $('#callPartnerVideo').src = p.avatar_url || '';
+  $('#callPartnerVideo').src = firstPhotoUrl(p);
   $('#callPartnerVideo').dataset.fallback = p.name || '?';
-  $('#callPartnerAvatar').src = p.avatar_url || '';
+  $('#callPartnerAvatar').src = firstPhotoUrl(p);
   $('#callPartnerAvatar').dataset.fallback = p.name || '?';
-  $('#callSelfVideo').src = state.myProfile?.avatar_url || '';
+  $('#callSelfVideo').src = firstPhotoUrl(state.myProfile);
   $('#callSelfVideo').dataset.fallback = state.myProfile?.name || 'You';
   wireFallbacks($('#callOverlay'));
 
@@ -2439,8 +2518,9 @@ function openPartnerProfile() {
   const match = state.matches.find((m) => m.id === state.activeMatchId);
   if (!match) return;
   const p = match.partner || {};
+  const photos = getPhotoList(p);
 
-  $('#profileSheetAvatar').src = p.avatar_url || '';
+  $('#profileSheetAvatar').src = firstPhotoUrl(p);
   $('#profileSheetAvatar').dataset.fallback = p.name || '?';
   $('#profileSheetName').textContent = `${p.name || 'Match'}${p.age ? `, ${p.age}` : ''}`;
   $('#profileSheetCity').textContent = p.city || '';
@@ -2448,6 +2528,14 @@ function openPartnerProfile() {
   $('#profileSheetTags').innerHTML = (p.tags || []).map((t) =>
     `<span class="px-2.5 py-1 rounded-full bg-hearth-50 text-hearth-600 text-[11px] font-semibold">${esc(t)}</span>`
   ).join('');
+
+  // Photo gallery
+  $('#profileSheetPhotos').innerHTML = photos.map((ph) => `
+    <div class="relative aspect-square rounded-[10px] overflow-hidden bg-hearth-100">
+      <img src="${esc(ph.photo_url)}" class="w-full h-full object-cover" alt="" />
+    </div>
+  `).join('');
+
   wireFallbacks($('#partnerProfileSheet'));
 
   const sheet = $('#partnerProfileSheet');
@@ -2713,7 +2801,7 @@ async function renderProfile() {
       ).join('')
     : '<span class="text-[11.5px] text-muted">No interests yet</span>';
 
-  const avatarUrl = p.avatar_url || '';
+  const avatarUrl = firstPhotoUrl(p);
   $('#profileAvatar').src = avatarUrl;
   $('#profileAvatar').dataset.fallback = p.name || 'You';
   $('#profileCoverImg').src = avatarUrl;
@@ -2722,6 +2810,34 @@ async function renderProfile() {
 
   $('#profilePremiumBadge').classList.toggle('hidden', !state.isPremium);
   $('#profileMembershipSub').textContent = state.isPremium ? 'Member+ active' : 'Free plan';
+
+  // Photo strip
+  const allPhotos = getPhotoList(p);
+  const strip = document.getElementById('profilePhotoStrip');
+  if (strip) {
+    strip.innerHTML = `
+      <p class="text-[11.5px] font-bold uppercase tracking-wider text-muted mb-2">Your photos · ${allPhotos.length}/4</p>
+      <div class="grid grid-cols-4 gap-2">
+        ${allPhotos.map((ph) => `
+          <div class="relative aspect-square rounded-[12px] overflow-hidden bg-hearth-100">
+            <img src="${esc(ph.photo_url)}" class="w-full h-full object-cover" alt="" data-fallback="You" />
+            ${ph.id === 'avatar' ? `
+              <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded-full bg-hearth text-charcoal text-[9px] font-extrabold uppercase">Main</span>
+            ` : ''}
+          </div>
+        `).join('')}
+        ${allPhotos.length < 4 ? `
+          <button id="addPhotoTile" class="aspect-square rounded-[12px] border-2 border-dashed border-line bg-white flex flex-col items-center justify-center text-muted active:scale-95 transition">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            <span class="text-[9px] font-bold mt-1">ADD</span>
+          </button>
+        ` : ''}
+      </div>
+    `;
+    wireFallbacks(strip);
+    const addBtn = document.getElementById('addPhotoTile');
+    if (addBtn) addBtn.addEventListener('click', openEditProfile);
+  }
 
   if (!state.myProfile) {
     try {
@@ -2743,9 +2859,11 @@ function openEditProfile() {
   $('#editBio').value = p.bio || '';
   $('#editAvatarUrl').value = p.avatar_url || '';
 
-  // Load user's tags into a Set for chips
   state.editingTags = new Set((p.tags || []).filter((t) => INTEREST_OPTIONS.includes(t)));
+  state.editingPhotos = (p.photos || []).filter((ph) => ph.id !== 'avatar');
+
   renderInterestChips('editInterestChips', state.editingTags, 8);
+  renderEditingPhotos();
 
   updateEditAvatarPreview();
   updateBioCount();
@@ -2770,6 +2888,90 @@ function closeEditProfile() {
     sheet.classList.remove('flex');
     panel.classList.remove('sheet-out');
   }, 200);
+}
+
+function renderEditingPhotos() {
+  const container = document.getElementById('editPhotosGrid');
+  if (!container) return;
+
+  const avatarUrl = state.myProfile?.avatar_url || '';
+  const extras = state.editingPhotos || [];
+
+  container.innerHTML = `
+    <div class="grid grid-cols-4 gap-2">
+      <div class="relative aspect-square rounded-[12px] overflow-hidden bg-hearth-100">
+        ${avatarUrl
+          ? `<img src="${esc(avatarUrl)}" class="w-full h-full object-cover" alt="" data-fallback="You" />`
+          : `<div class="w-full h-full flex items-center justify-center text-muted"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.6-3.6 3.7-5.8 7.5-5.8s6.9 2.2 7.5 5.8"/></svg></div>`
+        }
+        <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded-full bg-hearth text-charcoal text-[9px] font-extrabold uppercase">Main</span>
+      </div>
+
+      ${extras.map((ph) => `
+        <div class="relative aspect-square rounded-[12px] overflow-hidden bg-hearth-100">
+          <img src="${esc(ph.photo_url)}" class="w-full h-full object-cover" alt="" />
+          <button type="button" data-photo-id="${esc(ph.id)}"
+            class="edit-photo-remove absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-[14px] font-bold active:scale-90 transition">
+            ×
+          </button>
+        </div>
+      `).join('')}
+
+      ${extras.length < MAX_EXTRA_PHOTOS ? `
+        <button type="button" id="editAddPhotoTile" class="aspect-square rounded-[12px] border-2 border-dashed border-line bg-white flex flex-col items-center justify-center text-muted active:scale-95 transition">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span class="text-[9px] font-bold mt-1">ADD</span>
+        </button>
+      ` : ''}
+    </div>
+    <p class="text-[11px] text-muted mt-2">${extras.length} of ${MAX_EXTRA_PHOTOS} extra photos · tap × to remove</p>
+  `;
+
+  $$('.edit-photo-remove', container).forEach((btn) => {
+    btn.addEventListener('click', () => removeEditingPhoto(btn.dataset.photoId));
+  });
+
+  const addBtn = document.getElementById('editAddPhotoTile');
+  if (addBtn) addBtn.addEventListener('click', promptAddPhoto);
+}
+
+async function promptAddPhoto() {
+  const url = prompt('Paste a photo URL (https://…)\n\nTip: use Imgur, Cloudinary, or any public image host.');
+  if (!url) return;
+  const trimmed = url.trim();
+  if (!/^https?:\/\//i.test(trimmed)) {
+    toast('Must be a valid https URL');
+    return;
+  }
+  if (state.editingPhotos.length >= MAX_EXTRA_PHOTOS) {
+    toast(`You can add up to ${MAX_EXTRA_PHOTOS} extra photos`);
+    return;
+  }
+
+  try {
+    const { photo } = await api('/api/photos', {
+      method: 'POST',
+      body: { photo_url: trimmed },
+    });
+    state.editingPhotos.push(photo);
+    renderEditingPhotos();
+    toast('Photo added');
+  } catch (err) {
+    console.error('[photo add]', err);
+    toast(err.data?.error || err.message || 'Could not add photo');
+  }
+}
+
+async function removeEditingPhoto(id) {
+  try {
+    await api(`/api/photos/${id}`, { method: 'DELETE' });
+    state.editingPhotos = state.editingPhotos.filter((ph) => ph.id !== id);
+    renderEditingPhotos();
+    toast('Photo removed');
+  } catch (err) {
+    console.error('[photo remove]', err);
+    toast(err.data?.error || err.message || 'Could not remove photo');
+  }
 }
 
 function updateEditAvatarPreview() {
@@ -2888,16 +3090,16 @@ const INFO_CONTENT = {
     html: `
       <div class="space-y-4 text-[14px] leading-relaxed text-charcoal">
         <div class="bg-white rounded-card border border-line p-4">
+          <h3 class="text-[14.5px] font-bold mb-1">How do I add more photos?</h3>
+          <p class="text-muted text-[13.5px] mt-1">Open Edit profile → tap the dashed ADD tile. You can have 1 main photo + 3 extras.</p>
+        </div>
+        <div class="bg-white rounded-card border border-line p-4">
           <h3 class="text-[14.5px] font-bold mb-1">How do I see full profiles?</h3>
           <p class="text-muted text-[13.5px] mt-1">Free members see photos and distance only. Member+ reveals names, ages, bios and interests — plus advanced filters.</p>
         </div>
         <div class="bg-white rounded-card border border-line p-4">
           <h3 class="text-[14.5px] font-bold mb-1">How do I pay for Member+?</h3>
           <p class="text-muted text-[13.5px] mt-1">Tap "Unlock with Member+" anywhere in the app. Choose your plan, then complete the Tele Birr USSD payment.</p>
-        </div>
-        <div class="bg-white rounded-card border border-line p-4">
-          <h3 class="text-[14.5px] font-bold mb-1">Is messaging really free?</h3>
-          <p class="text-muted text-[13.5px] mt-1">Yes. Messaging with your matches is always free — forever. Member+ only adds discovery features.</p>
         </div>
         <div class="bg-white rounded-card border border-line p-4">
           <h3 class="text-[14.5px] font-bold mb-1">Still stuck?</h3>
@@ -3203,8 +3405,16 @@ async function enterApp() {
   if (!user) return;
   state.myId = user.id;
 
-  const { data: profile } = await supabase
-    .from('profiles').select('*').eq('id', user.id).maybeSingle();
+  let profile = null;
+  try {
+    const res = await api('/api/profiles/me');
+    profile = res.profile;
+  } catch (err) {
+    console.warn('[boot] profiles/me failed:', err.message);
+    const { data } = await supabase
+      .from('profiles').select('*').eq('id', user.id).maybeSingle();
+    profile = data;
+  }
 
   state.myProfile = profile;
   state.isPremium = !!profile?.is_premium;
